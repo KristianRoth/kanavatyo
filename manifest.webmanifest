@@ -1,0 +1,15 @@
+{
+  "name": "Mandelbrot Stitching",
+  "short_name": "Stitching",
+  "description": "Stitch-by-stitch view of a Mandelbrot cross-stitch chart: highlight one thread, mark progress, work offline.",
+  "start_url": "work.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#17171a",
+  "theme_color": "#17171a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
