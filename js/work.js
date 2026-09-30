@@ -10,6 +10,9 @@ import { THREADS, nearestThread } from './dmc.js';
 
 const $ = id => document.getElementById(id);
 const CHART_FORMAT = 'mandelbrot-stitch-chart';
+const PROGRESS_FORMAT = 'mandelbrot-stitch-progress';
+// Phones and tablets: touch layout (see work.css) and a smaller stitch-image budget (memory).
+const PHONE = matchMedia('(max-width: 900px), (pointer: coarse)').matches;
 const PREFS_KEY = 'mandel-stitch-work-prefs';
 
 // ---------- Storage: the last chart and the progress of each chart live in IndexedDB (too big for localStorage) ----------
@@ -151,7 +154,9 @@ async function openChartText(text, remember) {
   view.fit();
   $('dropHint').hidden = true;
   const cm = v => Math.round(v * 10) / 10;
-  $('chartInfo').textContent = `${chart.name} · ${W} × ${H} stitches · ${cm(c.size.widthCm)} × ${cm(c.size.heightCm)} cm · ${c.yarn}`;
+  $('chartInfo').textContent = $('chartInfo2').textContent =
+    `${chart.name} · ${W} × ${H} stitches · ${cm(c.size.widthCm)} × ${cm(c.size.heightCm)} cm · ${c.yarn}`;
+  navigator.storage?.persist?.().catch(() => {}); // ask the browser to keep the chart and progress
   document.title = `${chart.name} · Stitching view`;
   renderThreads();
   if (remember) {
@@ -315,17 +320,19 @@ function floodCells(i, j) {
 let spaceDown = false;
 let stroke = null; // { value, changed: [], last: {i, j} }
 const paint = {
-  active: e => chart && !spaceDown && e.button === 0 && prefs.tool !== 'pan',
+  // Mark / Unmark paint while dragging. Flood acts on a tap (see onTap), so dragging with it moves the view and a
+  // two-finger pinch never floods by accident.
+  active: e => chart && !spaceDown && e.button === 0 && (prefs.tool === 'paint' || prefs.tool === 'erase'),
   stroke(phase, cell) {
+    if (phase === 'cancel') {
+      // A second finger arrived: undo this stroke (the view turns it into a pinch zoom).
+      if (stroke) setCells(stroke.changed, stroke.value ? 0 : 1);
+      stroke = null;
+      renderThreads();
+      return;
+    }
     if (phase === 'down') {
       if (!cell) return;
-      if (prefs.tool === 'fill') {
-        const k = cell.j * chart.W + cell.i;
-        const value = chart.done[k] ? 0 : 1; // flooding from a finished stitch unmarks the patch
-        pushUndo(setCells(floodCells(cell.i, cell.j), value), value);
-        renderThreads();
-        return;
-      }
       stroke = { value: prefs.tool === 'paint' ? 1 : 0, changed: [], last: cell };
       for (const k of setCells(brushCells(cell.i, cell.j), stroke.value)) stroke.changed.push(k);
     } else if (phase === 'move' && stroke && cell) {
@@ -346,6 +353,73 @@ const paint = {
     }
   },
 };
+
+// Flood from a tapped / clicked stitch; flooding from a finished stitch unmarks the patch.
+function floodAt(cell) {
+  const k = cell.j * chart.W + cell.i;
+  const value = chart.done[k] ? 0 : 1;
+  pushUndo(setCells(floodCells(cell.i, cell.j), value), value);
+  renderThreads();
+}
+
+// ---------- Progress files: backup and moving progress between devices ----------
+// done (0/1 per cell) is stored as alternating run lengths, starting with a run of 0s, in base 36.
+function encodeRuns(done) {
+  const runs = [];
+  let cur = 0, n = 0;
+  for (let k = 0; k < done.length; k++) {
+    if (done[k] === cur) n++;
+    else { runs.push(n.toString(36)); cur = done[k]; n = 1; }
+  }
+  runs.push(n.toString(36));
+  return runs.join(',');
+}
+function decodeRuns(text, length) {
+  const out = new Uint8Array(length);
+  let k = 0, cur = 0;
+  for (const part of text.split(',')) {
+    const n = parseInt(part, 36);
+    if (!Number.isFinite(n) || n < 0 || k + n > length) return null;
+    if (cur) out.fill(1, k, k + n);
+    k += n;
+    cur ^= 1;
+  }
+  return k === length ? out : null;
+}
+
+function saveProgressFile() {
+  if (!chart) return message('Open a chart first', true);
+  const { W, H, done } = chart;
+  let cells = 0;
+  for (let k = 0; k < done.length; k++) cells += done[k];
+  const data = { format: PROGRESS_FORMAT, version: 1, chartId: chart.id, name: chart.name, W, H, savedAt: new Date().toISOString(), doneCells: cells, done: encodeRuns(done) };
+  const d = new Date(), pad = n => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  a.download = `${chart.name.replace(/[\\/:*?"<>|]+/g, '-')} - progress - ${stamp}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  message(`Saved ${a.download}`);
+}
+
+async function loadProgressFile(file) {
+  if (!chart) return message('Open the chart first, then load its progress', true);
+  let p;
+  try { p = JSON.parse(await file.text()); } catch { return message('Not a valid progress file', true); }
+  if (p?.format !== PROGRESS_FORMAT) return message('Not a progress file (use ⬇ Save progress)', true);
+  if (p.W !== chart.W || p.H !== chart.H) return message(`This progress is for a ${p.W} × ${p.H} chart; the open chart is ${chart.W} × ${chart.H}`, true);
+  if (p.chartId !== chart.id && !confirm(`This progress was saved for "${p.name}" (another export). Apply it to "${chart.name}" anyway? The grid is the same size.`)) return;
+  const done = decodeRuns(String(p.done || ''), chart.W * chart.H);
+  if (!done) return message('The progress file is damaged', true);
+  const on = [], off = [];
+  for (let k = 0; k < done.length; k++) (done[k] ? on : off).push(k);
+  setCells(on, 1);
+  setCells(off, 0);
+  undoStack.length = 0;
+  renderThreads();
+  message(`Loaded progress from ${p.savedAt?.slice(0, 16).replace('T', ' ') || 'the file'} (${on.length.toLocaleString()} cells done)`);
+}
 
 // ---------- Visualizations: color each stitch by a property ----------
 // Each visualization computes (once per chart, cached) a value per cell and maps it to a color; the result is a
@@ -572,16 +646,32 @@ function drawRulers(ctx, v) {
 
 const view = new PatternView($('stitches'), {
   onHover(h) {
+    if (!h && PHONE) return; // touch: keep the last tapped stitch
     hoverCell = h ? { i: h.i, j: h.j } : null;
-    $('hover').textContent = h ? describeCell(h.i, h.j) : '';
+    showReadout();
     view.requestDraw(); // crosshair, ruler numbers, brush outline (cheap: the stitch image is cached)
   },
+  onTap(cell) {
+    if (!chart || !cell) return;
+    hoverCell = cell;
+    showReadout();
+    if (prefs.tool === 'fill') floodAt(cell);
+    view.requestDraw();
+  },
+  budget: PHONE ? 6e6 : undefined,
+  miniSize: PHONE ? 96 : undefined,
   onZoom(z) {
     $('zoomInfo').textContent = z >= 1 ? `${z.toFixed(1)} px/stitch` : `1 px = ${(1 / z).toFixed(1)} stitches`;
   },
   afterDraw,
   paint,
 });
+
+function showReadout() {
+  const text = chart && hoverCell ? describeCell(hoverCell.i, hoverCell.j) : '';
+  $('hover').textContent = text;
+  if (text) $('mInfo').textContent = text;
+}
 
 function describeCell(i, j) {
   const { W, indices, blocks, byT, done } = chart;
@@ -632,7 +722,10 @@ function renderThreads() {
         <td class="num">${fmt(it.stitches)}</td>
         <td class="num">${it.meters != null ? fmt(it.meters) : ''}</td>
         <td>${bar(done, it.stitches)}</td>`;
-      tr.addEventListener('click', () => setHighlightKind(hlKind === it.key ? null : it.key));
+      tr.addEventListener('click', () => {
+        setHighlightKind(hlKind === it.key ? null : it.key);
+        if (PHONE) setSheet(false);
+      });
       return tr;
     });
     allDone += tDone; allTotal += tTotal;
@@ -647,7 +740,7 @@ function renderThreads() {
     tbody.append(head, ...rows);
   }
   const pct = allTotal ? (allDone / allTotal) * 100 : 0;
-  $('pctAll').textContent = `${pct.toFixed(pct < 10 ? 1 : 0)}%`;
+  $('pctAll').textContent = $('mPct').textContent = `${pct.toFixed(pct < 10 ? 1 : 0)}%`;
   $('barAll').style.width = `${pct.toFixed(2)}%`;
   $('progressText').textContent = `${fmt(allDone)} of ${fmt(allTotal)} stitches done · ${fmt(allTotal - allDone)} to go`;
 }
@@ -665,7 +758,8 @@ function findNext() {
       findFrom = k + 1;
       view.fitted = false;
       view.zoomTo(Math.max(view.z, 14), i + 0.5, j + 0.5);
-      $('hover').textContent = describeCell(i, j);
+      hoverCell = { i, j };
+      showReadout();
       return;
     }
   }
@@ -676,15 +770,34 @@ function findNext() {
 
 let setBrush = () => {};
 
+function setSheet(open) {
+  document.body.classList.toggle('sheet-open', open);
+}
+
 function setTool(tool) {
   prefs.tool = tool;
-  for (const b of document.querySelectorAll('#tools [data-tool]')) b.classList.toggle('on', b.dataset.tool === tool);
+  for (const b of document.querySelectorAll('[data-tool]')) b.classList.toggle('on', b.dataset.tool === tool);
   $('stitches').dataset.tool = tool;
   savePrefs();
 }
 
 function init() {
-  for (const b of document.querySelectorAll('#tools [data-tool]')) b.addEventListener('click', () => setTool(b.dataset.tool));
+  for (const b of document.querySelectorAll('[data-tool]')) b.addEventListener('click', () => setTool(b.dataset.tool));
+  // Phone toolbar and sheet.
+  $('mUndo').addEventListener('click', undo);
+  $('mNext').addEventListener('click', findNext);
+  $('mSheet').addEventListener('click', () => setSheet(!document.body.classList.contains('sheet-open')));
+  $('sheetClose').addEventListener('click', () => setSheet(false));
+  $('openChart2').addEventListener('click', () => $('chartFile').click());
+  $('fsBtn2').addEventListener('click', () => $('fsBtn').click());
+  // Progress files.
+  $('saveProgress').addEventListener('click', saveProgressFile);
+  $('loadProgress').addEventListener('click', () => $('progressFile').click());
+  $('progressFile').addEventListener('change', e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (f) loadProgressFile(f);
+  });
   setTool(prefs.tool);
   const bindCheck = (id, key, after) => {
     $(id).checked = prefs[key];
@@ -745,7 +858,7 @@ function init() {
     else document.documentElement.requestFullscreen?.();
   });
   document.addEventListener('fullscreenchange', () => {
-    fsBtn.textContent = document.fullscreenElement ? '✕ Exit fullscreen' : '⛶ Fullscreen';
+    fsBtn.textContent = $('fsBtn2').textContent = document.fullscreenElement ? '✕ Exit fullscreen' : '⛶ Fullscreen';
   });
 
   // Keyboard: 1–4 tools, Space held = move, Cmd/Ctrl+Z undo, N next undone, F fit, S symbols, Esc clears highlight.
@@ -773,6 +886,13 @@ function init() {
 
   // Reopen the last chart (and its progress).
   store.get('chart').then(text => { if (text) openChartText(text, false); });
+
+  // Offline + "Add to Home screen": a network-first service worker (sw.js). Not on localhost, where serve.py's no-cache
+  // behavior matters more (add ?sw=1 to test it there).
+  const local = ['localhost', '127.0.0.1'].includes(location.hostname);
+  if ('serviceWorker' in navigator && (!local || new URLSearchParams(location.search).has('sw'))) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
 }
 
 init();

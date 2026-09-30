@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17171a">
   <title>Stitching view · Mandelbrot Cross-Stitch</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="work.css">
 </head>
@@ -13,7 +16,7 @@
     <span id="chartInfo" class="muted">No chart loaded</span>
     <div class="row file-tools">
       <button id="openChart" type="button" title="Open a stitch chart (🧵 Final export in the designer), or drop it anywhere">📂 Open chart</button>
-      <input id="chartFile" type="file" accept=".json,application/json" hidden>
+      <input id="chartFile" type="file" accept=".json,application/json,text/plain" hidden>
       <button id="fsBtn" type="button" title="Fullscreen">⛶ Fullscreen</button>
       <a class="btn-link" href="index.html" target="_blank" rel="noopener" title="Open the designer">✏️ Designer</a>
       <span id="msg" class="muted small"></span>
@@ -22,6 +25,20 @@
 
   <main class="work-main">
     <aside class="panel work-panel" aria-label="Stitching tools">
+      <!-- Phone: this panel is a slide-up sheet (☰ in the bottom toolbar). -->
+      <div class="sheet-head">
+        <span class="sheet-grip"></span>
+        <button id="sheetClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <section class="phone-only">
+        <h2>Chart</h2>
+        <div id="chartInfo2" class="muted small"></div>
+        <div class="row wrap">
+          <button id="openChart2" type="button">📂 Open chart</button>
+          <button id="fsBtn2" type="button">⛶ Fullscreen</button>
+          <a class="btn-link" href="index.html" rel="noopener">✏️ Designer</a>
+        </div>
+      </section>
       <section>
         <h2>Tools</h2>
         <div class="seg tools" id="tools" role="group" aria-label="Tool">
@@ -93,9 +110,24 @@
           <tbody id="threads"></tbody>
         </table>
       </section>
+
+      <section>
+        <h2>Progress backup</h2>
+        <p class="muted small">Progress is kept in this browser. Save it to a file now and then (a backup, and the way to move it between your phone and computer).</p>
+        <div class="row wrap">
+          <button id="saveProgress" type="button" title="Download your progress as a file">⬇ Save progress</button>
+          <button id="loadProgress" type="button" title="Apply a saved progress file to the open chart">⬆ Load progress</button>
+          <input id="progressFile" type="file" accept=".json,application/json,text/plain" hidden>
+        </div>
+      </section>
     </aside>
 
     <section class="work-stage">
+      <!-- Phone: top bar (progress + tapped stitch) and bottom toolbar. -->
+      <div class="mobile-bar">
+        <span id="mPct" class="m-pct">–</span>
+        <span id="mInfo" class="m-info">Tap a stitch to see what it is</span>
+      </div>
       <div class="preview-box work-box">
         <canvas id="stitches"></canvas>
         <div id="dropHint" class="preview-off">Open a stitch chart (🧵 Final export in the designer) or drop it here.</div>
@@ -104,6 +136,15 @@
         <span id="hover" class="mono small"></span>
         <span id="zoomInfo" class="mono muted small"></span>
       </div>
+      <nav class="mobile-tools" aria-label="Tools">
+        <button type="button" data-tool="pan" aria-label="Move">✋<small>Move</small></button>
+        <button type="button" data-tool="paint" aria-label="Mark">✔<small>Mark</small></button>
+        <button type="button" data-tool="erase" aria-label="Unmark">⌫<small>Unmark</small></button>
+        <button type="button" data-tool="fill" aria-label="Flood">🪣<small>Flood</small></button>
+        <button type="button" id="mUndo" aria-label="Undo">↶<small>Undo</small></button>
+        <button type="button" id="mNext" aria-label="Next undone">🔍<small>Next</small></button>
+        <button type="button" id="mSheet" aria-label="Menu">☰<small>Menu</small></button>
+      </nav>
     </section>
   </main>
 
