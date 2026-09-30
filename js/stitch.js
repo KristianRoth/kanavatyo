@@ -103,14 +103,23 @@ export class PatternView {
   // getFreeRect (optional): () → { x, y, w, h } — the part of the canvas not covered by floating panels (CSS px);
   // Fit places the pattern there.
   // afterDraw (optional): (ctx, { ox, oy, z, i0, j0, i1, j1, W, H }) → draw overlays on top (CSS px, stitch coords).
-  // paint (optional): { active(event) → bool, stroke('down' | 'move' | 'up', cell {i, j} | null) } — when active on
-  // pointerdown, dragging paints cells instead of panning (the stitching view's marking tools).
-  constructor(canvas, { onHover, onZoom, getFreeRect, afterDraw, paint }) {
+  // paint (optional): { active(event) → bool, stroke('down' | 'move' | 'up' | 'cancel', cell {i, j} | null) } — when
+  // active on pointerdown, dragging paints cells instead of panning (the stitching view's marking tools). A second
+  // finger during a stroke cancels it ('cancel': the caller reverts it) and becomes a pinch zoom.
+  // onTap (optional): (cell | null) → a press released without moving (touch has no hover).
+  // budget (optional): max device pixels of the rasterized stitch image (default STITCH_BUDGET; less on phones).
+  // miniSize (optional): overview inset size in CSS px (default MINI; smaller on phones).
+  constructor(canvas, { onHover, onZoom, getFreeRect, afterDraw, paint, onTap, budget, miniSize }) {
     this.canvas = canvas;
     this.getFreeRect = getFreeRect;
     this.afterDraw = afterDraw;
     this.paint = paint;
+    this.onTap = onTap;
+    this.budget = budget || STITCH_BUDGET;
+    this.miniSize = miniSize || MINI;
     this.painting = null;
+    this.paintPos = null;  // last position of the painting pointer (for the hand-off to a pinch)
+    this.press = null;     // { id, x, y, moved } of the current press, for taps
     this.ctx = canvas.getContext('2d');
     this.onHover = onHover;
     this.onZoom = onZoom;
@@ -146,9 +155,17 @@ export class PatternView {
       return { dist: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, mid: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] };
     };
     canvas.addEventListener('pointerdown', e => {
-      if (this.paint && !this.pointers.size && this.pattern && this.paint.active(e)) {
+      if (!this.pointers.size && this.painting == null) this.press = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+      else if (this.press) this.press.moved = true; // a second finger: not a tap
+      if (this.painting != null && e.pointerId !== this.painting) {
+        // Second finger while painting: drop the stroke and pinch-zoom with both fingers instead.
+        this.paint.stroke('cancel', null);
+        this.pointers.set(this.painting, this.paintPos);
+        this.painting = null;
+      } else if (this.paint && !this.pointers.size && this.pattern && this.paint.active(e)) {
         canvas.setPointerCapture(e.pointerId);
         this.painting = e.pointerId;
+        this.paintPos = local(e);
         this.paint.stroke('down', this.cellAt(e));
         return;
       }
@@ -163,7 +180,9 @@ export class PatternView {
       }
     });
     canvas.addEventListener('pointermove', e => {
+      if (this.press?.id === e.pointerId && Math.hypot(e.clientX - this.press.x, e.clientY - this.press.y) > 8) this.press.moved = true;
       if (this.painting === e.pointerId) {
+        this.paintPos = local(e);
         this.paint.stroke('move', this.cellAt(e));
         this.hover(e);
         return;
@@ -194,6 +213,9 @@ export class PatternView {
       this.hover(e);
     });
     const end = e => {
+      const tap = this.press?.id === e.pointerId && !this.press.moved && e.type === 'pointerup';
+      if (this.press?.id === e.pointerId) this.press = null;
+      if (tap) this.onTap?.(this.cellAt(e));
       if (this.painting === e.pointerId) {
         this.painting = null;
         this.paint.stroke('up', null);
@@ -401,7 +423,7 @@ export class PatternView {
         this.tiles.push({ c, x: tx, y: ty, w, h });
       }
     }
-    const k = Math.min(1, MINI / Math.max(W, H));
+    const k = Math.min(1, this.miniSize / Math.max(W, H));
     const mini = document.createElement('canvas');
     mini.width = Math.max(1, Math.round(W * k));
     mini.height = Math.max(1, Math.round(H * k));
@@ -472,7 +494,7 @@ export class PatternView {
     // hole shading, i.e. how the piece looks from a distance.
     const avg = z * dpr < 2;
     let k = avg ? 2 : Math.max(STITCH_MIN_K, Math.round(z * dpr));
-    k = Math.min(k, Math.floor(Math.sqrt(STITCH_BUDGET / cells)));
+    k = Math.min(k, Math.floor(Math.sqrt(this.budget / cells)));
     if (k < 2) return false;
     const open = Math.round(Math.min(1, Math.max(0, (z - 6) / 10)) * 10) / 10;
     let c = this.sr;
@@ -508,7 +530,7 @@ export class PatternView {
     // Margin of a quarter view on each side (so panning reuses the image), if it fits the budget.
     const mw = Math.ceil((i1 - i0) / 4), mh = Math.ceil((j1 - j0) / 4);
     let ci0 = Math.max(0, i0 - mw), cj0 = Math.max(0, j0 - mh), ci1 = Math.min(W, i1 + mw), cj1 = Math.min(H, j1 + mh);
-    if ((ci1 - ci0) * (cj1 - cj0) * k * k > STITCH_BUDGET) [ci0, cj0, ci1, cj1] = [i0, j0, i1, j1];
+    if ((ci1 - ci0) * (cj1 - cj0) * k * k > this.budget) [ci0, cj0, ci1, cj1] = [i0, j0, i1, j1];
     const cols = ci1 - ci0, rows = cj1 - cj0, OW = cols * k, OH = rows * k;
 
     // Shaded colors per thread (packed RGBA and RGB): layer 0 = hole, 1 = outline, 2 = thread, 3 = sheen.
