@@ -1,0 +1,50 @@
+/* Stitching view (work.html): a full-window layout, the same in fullscreen. Builds on style.css. */
+body.work { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.work-top { flex: none; padding: 10px 16px; }
+.work-top h1 { font-size: 18px; }
+.work-main {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: 460px minmax(0, 1fr);
+  gap: 12px; padding: 0 16px 12px;
+}
+.work-panel { overflow-y: auto; min-height: 0; }
+.work-stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.work-box { flex: 1; min-height: 0; aspect-ratio: auto; }
+.work-status { flex: none; }
+.tools { flex-wrap: wrap; }
+.work #stitches[data-tool="paint"], .work #stitches[data-tool="erase"] { cursor: crosshair; }
+.work #stitches[data-tool="fill"] { cursor: cell; }
+.work #stitches.panning { cursor: grab; }
+.work-panel progress { width: 100%; }
+.work-legend td { vertical-align: middle; }
+.work-legend .sym {
+  display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 20px; border-radius: 4px;
+  font: 700 12px ui-monospace, Menlo, monospace; border: 1px solid rgba(0, 0, 0, 0.25);
+}
+.work-legend .name { font-size: 12px; line-height: 1.25; }
+.work-legend .name b { font-weight: 600; }
+.work-legend .type { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.work-legend .sym.big { width: 28px; height: 24px; font-size: 14px; border-width: 2px; }
+.done-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.done-bar .bar { flex: none; width: 96px; height: 10px; border-radius: 5px; background: var(--border); overflow: hidden; }
+.done-bar .bar span { display: block; height: 100%; background: #2e9e5b; border-radius: 5px; }
+.done-bar.complete { color: #2e9e5b; }
+.done-bar.big .bar { width: 100%; height: 16px; border-radius: 8px; }
+.done-bar.big { display: block; }
+.total-progress { display: flex; align-items: center; gap: 14px; margin: 4px 0 8px; }
+.total-pct { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 110px; }
+.total-detail { flex: 1; min-width: 0; }
+.work-legend tr.thread-row td { border-top: 2px solid var(--border); padding-top: 6px; }
+.work-legend tr.thread-row { cursor: default; }
+.work-legend tr.thread-row .name { font-size: 13px; }
+.work-legend tr.item-row .name { padding-left: 16px; color: var(--muted); }
+.work-legend tr.item-row.active .name { color: var(--text); }
+.work-legend tr.complete .name { opacity: 0.55; }
+.visual-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--muted); margin: 2px 0 8px; }
+.visual-legend:empty { display: none; }
+.visual-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.visual-legend i { display: inline-block; width: 14px; height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.25); }
+@media (max-width: 800px) {
+  body.work { height: auto; overflow: auto; }
+  .work-main { grid-template-columns: 1fr; }
+  .work-box { height: 70vh; flex: none; }
+}

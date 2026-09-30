@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mandelbrot Cross-Stitch</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Mandelbrot Cross-Stitch</h1>
+    <span class="muted">Pick a spot, choose colors, preview it as half stitches in DMC, Pirkka or Rauma yarn.</span>
+    <div class="row file-tools">
+      <button id="saveSettings" type="button" title="Download the selection, colors and render settings as a JSON file (Cmd+S)">💾 Save</button>
+      <button id="loadSettings" type="button" title="Open a saved JSON file or stitch chart (or drop it onto the page)">📂 Load</button>
+      <a class="btn-link" href="work.html" target="_blank" rel="noopener" title="Open the stitching view: load a final export and track your progress while stitching">🪡 Stitching view</a>
+      <button id="finalExport" type="button" title="Final export: every stitch of the pattern, the 10-point blocks, the thread list and the settings, as one JSON file for making the piece">🧵 Final export</button>
+      <input id="loadFile" type="file" accept=".json,application/json" hidden>
+      <span id="fileMsg" class="muted small"></span>
+    </div>
+  </header>
+
+  <main class="app" id="app">
+    <!-- Color panel: affects both views. Docked as a sticky column; floats inside a view in fullscreen. -->
+    <aside class="panel" id="colorPanel" aria-label="Colors">
+      <div class="float-bar"><span class="grip" title="Drag to move">⠿ Colors</span><button type="button" class="float-hide">Hide</button></div>
+      <section>
+        <h2>🎨 Colors by depth</h2>
+        <div class="field-label">Random palette <span class="muted">(shortcut: G)</span></div>
+        <select id="genStyle" aria-label="Random palette style"></select>
+        <div class="row wrap">
+          <button id="generate" type="button" title="Generate a random palette (G)">🎲 Generate</button>
+          <button id="paletteBack" type="button" title="Go back to the previous palette">↶ Back</button>
+          <button id="savePalette" type="button" title="Save this palette to the library">★ Save</button>
+        </div>
+        <label class="inline"><input id="genCycle" type="checkbox"> Also randomize cycle length &amp; phase</label>
+        <details class="library" open>
+          <summary>Palette library <span id="presetCount" class="muted"></span></summary>
+          <div id="gallery" class="gallery"></div>
+        </details>
+        <div class="field-label">Gradient stops · <span id="paletteName"></span></div>
+        <div id="stops" class="stops"></div>
+        <div class="row">
+          <button id="addStop" type="button">+ Stop</button>
+          <button id="reverseStops" type="button">Reverse</button>
+        </div>
+        <label>Depth mapping
+          <select id="mapping">
+            <option value="cyclic">Cyclic (repeat)</option>
+            <option value="linear">Linear</option>
+            <option value="log">Logarithmic</option>
+            <option value="balanced">Balanced (equal area per color)</option>
+            <option value="edge">Balanced to max depth · crisp edge</option>
+            <option value="spectrum">Single pass · detail balance</option>
+          </select>
+        </label>
+        <label class="inline" id="fitRangeRow" title="Spread the whole gradient over the depths present in the selected area">
+          <input id="fitRange" type="checkbox"> Fit gradient to the selected area
+        </label>
+        <label id="edgeWidthRow">Edge band width <output id="edgeWidthOut"></output>
+          <input id="edgeWidth" type="range" min="-200" max="200" step="1" title="Left: thin bands at the edge · Right: wide bands at the edge (double-click to reset)">
+          <span class="range-ends"><span>narrow</span><span>balanced</span><span>wide</span></span>
+        </label>
+        <label id="detailBalanceRow">Detail balance <output id="detailBalanceOut"></output>
+          <input id="detailBalance" type="range" min="0" max="100" step="1" title="How the single gradient pass is shared out. Left: equal area per color (like Balanced), detail in the outer areas. Right: by depth, more colors in the deep filaments next to the inside. Double-click to reset.">
+          <span class="range-ends"><span>by area</span><span>even</span><span>by depth (near the set)</span></span>
+        </label>
+        <label id="bunchRow">Band bunching <output id="bunchOut"></output>
+          <input id="bunch" type="range" min="-100" max="100" step="1" title="Pack the color bands toward the outer area (left) or toward the set's edge (right). Double-click to reset.">
+          <span class="range-ends"><span>toward outside</span><span>even</span><span>toward edge</span></span>
+        </label>
+        <label id="periodRow"><span id="periodLabel">Iterations per cycle</span>
+          <span class="slider-num">
+            <input id="period" type="range" min="0" max="1000" step="1" title="Logarithmic: 1 – 1,000,000">
+            <input id="periodNum" type="number" min="1" max="1000000" step="any">
+          </span>
+        </label>
+        <label class="cyclic-only">Phase <output id="offsetOut"></output>
+          <input id="offset" type="range" min="0" max="1" step="0.01">
+        </label>
+        <label>Depth bands <span class="muted">(0 = smooth)</span>
+          <input id="bands" type="number" min="0" max="64" step="1">
+        </label>
+        <label class="inline">Inside the set
+          <input id="interior" type="color">
+        </label>
+      </section>
+    </aside>
+
+    <div class="layout">
+    <!-- Row 1: explorer -->
+    <div class="stage solo" id="explorerStage">
+      <section class="card" id="explorerCard">
+        <div class="card-head">
+          <h2>Explorer</h2>
+          <div class="row wrap-tight">
+            <label class="inline compact" title="Higher = more detail near the set edge, slower">Max iterations
+              <input id="maxIter" type="number" min="20" max="1000000" step="10">
+            </label>
+            <label class="inline compact" title="Rotate the stitch area (degrees, counter-clockwise). Or drag the round knob; Shift snaps to 15°. Double-click to reset.">Rotation °
+              <input id="selRot" type="number" min="-180" max="180" step="1">
+            </label>
+            <label class="inline compact" title="Framing guide inside the selection and over the stitch preview (F cycles, Shift+F turns)">Guide
+              <select class="guide-select"></select>
+            </label>
+            <button class="guide-orient" type="button" title="Turn the guide (Shift+F)">⟲</button>
+            <button id="selToggle" type="button" title="Hide the selection to explore freely (also: a plain click in the explorer, H, or Esc). Shift-drag draws a new one.">Hide selection</button>
+            <button id="selectMode" type="button" title="Draw a new stitch area (or Shift-drag). Turns off after drawing.">▭ Select area</button>
+            <button id="zoomSel" type="button">Zoom to selection</button>
+            <button id="resetView" type="button">Reset view</button>
+            <button class="colors-btn" type="button" title="Show/hide the color panel">🎨 Colors</button>
+            <button class="fs-btn" data-stage="explorerStage" type="button" title="Fullscreen (Esc to exit)">⛶ Fullscreen</button>
+          </div>
+        </div>
+        <div id="explorerWrap" class="explorer">
+          <canvas id="explorer"></canvas>
+          <canvas id="overlay"></canvas>
+        </div>
+        <p class="muted small">
+          Drag to move · two-finger scroll or pinch to zoom ·
+          <b>▭ Select area</b> or Shift-drag to draw the stitch area · click (or H) to deselect · drag corners to resize · drag the ○ knob to rotate (Shift snaps 15°) · drag the ⠿ size tag to move it
+        </p>
+        <div id="coords" class="info mono"></div>
+      </section>
+    </div>
+
+    <!-- Row 2: size, thread & preview controls → stitch renderer -->
+    <div class="stage" id="stitchStage">
+    <aside class="panel sticky" aria-label="Pattern controls">
+      <div class="float-bar"><span class="grip" title="Drag to move">⠿ Controls</span><button type="button" class="float-hide">Hide</button></div>
+      <section>
+        <h2>Calculation depth</h2>
+        <label title="Max iterations: higher = more detail near the set's edge, slower. Same setting as the explorer's Max iterations. Recomputes when you release the slider.">Max iterations
+          <span class="slider-num">
+            <input id="depthSlider" type="range" min="0" max="1000" step="1">
+            <input id="depthNum" type="number" min="20" max="1000000" step="10">
+          </span>
+          <span class="range-ends"><span>20</span><span>fast · detailed</span><span>1,000,000</span></span>
+        </label>
+      </section>
+
+      <section>
+        <h2>Pattern size</h2>
+        <label>Stitches per cm
+          <input id="density" type="number" min="1" max="100" step="0.1">
+        </label>
+        <div class="row">
+          <label>Width (cm)
+            <input id="cmW" type="number" min="1" max="1000" step="0.1">
+          </label>
+          <label>Height (cm)
+            <input id="cmH" type="number" min="1" max="1000" step="0.1">
+          </label>
+        </div>
+        <div class="row">
+          <label>Width (stitches)
+            <input id="stitchW" type="number" min="5" max="20000" step="1">
+          </label>
+          <label>Height (stitches)
+            <input id="stitchH" type="number" min="5" max="20000" step="1">
+          </label>
+        </div>
+        <div id="sizeInfo" class="info"></div>
+      </section>
+
+      <section>
+        <h2>Threads</h2>
+        <label title="Which threads the pattern is made of. Pirkka colors are sampled from the 2024 shade card photo, Rauma Finull colors from the product photos on raumagarn.no (both approximate).">Yarn
+          <select id="yarn">
+            <option value="dmc">DMC stranded cotton (441 colors)</option>
+            <option value="pirkka">Pirkka wool (75 colors)</option>
+            <option value="rauma">Rauma Finull wool (137 colors)</option>
+          </select>
+        </label>
+        <details class="yarn-amount" id="yarnAmount">
+          <summary>Yarn amount · <span id="yarnAmountName">DMC</span></summary>
+          <div class="row">
+            <label>Meters per ball <input id="yarnMeters" type="number" min="1" max="100000" step="any"></label>
+            <label>Grams per ball <input id="yarnGrams" type="number" min="1" max="10000" step="any"></label>
+          </div>
+          <div class="row">
+            <label title="Strands threaded for each small 20-point stitch. 0.5 = one ply of a 2-ply strand (split the yarn)">Strands, 20-point <input id="yarnStrands" type="number" min="0.25" max="12" step="0.5"></label>
+            <label id="yarnStrandsBigRow" title="Strands threaded for each big 10-point stitch (over a 2 × 2 block)">Strands, 10-point <input id="yarnStrandsBig" type="number" min="0.25" max="12" step="0.5"></label>
+            <label title="Extra for starting and ending tails and travel between areas">Extra for tails % <input id="yarnExtra" type="number" min="0" max="200" step="1"></label>
+          </div>
+          <div id="yarnPerStitch" class="info"></div>
+        </details>
+        <label>Max thread colors
+          <input id="maxColors" type="number" min="2" max="80" step="1">
+        </label>
+        <label>Sampling
+          <select id="supersample">
+            <option value="1">Stitch center (fastest, crisp)</option>
+            <option value="2">2×2 per stitch (4× slower)</option>
+            <option value="3">3×3 per stitch (9× slower)</option>
+            <option value="8">Ultra clean: 64 samples, jittered median (64× slower)</option>
+            <option value="16">Ultra clean: 256 samples (256× slower, final export)</option>
+            <option value="32">Ultra clean: 1024 samples (1024× slower, final export)</option>
+          </select>
+        </label>
+      </section>
+
+      <section>
+        <h2>Label in stitches</h2>
+        <label class="inline"><input id="labelOn" type="checkbox"> Stitch a label into the pattern</label>
+        <label>Text
+          <input id="labelText" type="text" maxlength="120" placeholder="empty = coordinates and zoom">
+        </label>
+        <div class="row">
+          <label>Position
+            <select id="labelPos">
+              <option value="bl">Bottom left</option>
+              <option value="bc">Bottom center</option>
+              <option value="br">Bottom right</option>
+            </select>
+          </label>
+          <label title="Font height in stitches (before the size multiplier)">Font
+            <select id="labelFont">
+              <option value="7">7 tall (5×7)</option>
+              <option value="5">5 tall (3×5)</option>
+              <option value="3">3 tall (tiny)</option>
+            </select>
+          </label>
+        </div>
+        <label title="Each font pixel becomes size × size stitches">Size
+          <select id="labelSize">
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="3">3×</option>
+          </select>
+        </label>
+        <div class="row">
+          <label>Text thread <select id="labelFg"></select></label>
+          <label>Background
+            <select id="labelBgMode">
+              <option value="none">None</option>
+              <option value="outline">Outline</option>
+              <option value="band">Band</option>
+            </select>
+          </label>
+        </div>
+        <label>Background thread <select id="labelBg"></select></label>
+        <div id="labelInfo" class="info"></div>
+      </section>
+
+      <section>
+        <h2>Preview</h2>
+        <label class="inline"><input id="grid" type="checkbox"> Show grid</label>
+        <label class="inline" title="Penelope canvas: where a 2 × 2 block of the fine grid (fixed blocks from the top-left corner) is one color, stitch it as one big 10-point stitch instead of four small ones"><input id="grosPoint" type="checkbox"> 10-point: one stitch per same-color 2×2 block</label>
+        <label title="An island is a group of same-color 10-point stitches touching by an edge or a corner. Islands this small or smaller are stitched as 20-point instead (0 = keep every 10-point stitch).">Split 10-point islands of up to (stitches)
+          <input id="islandMax" type="number" min="0" max="1000" step="1">
+        </label>
+        <div id="islandInfo" class="info"></div>
+        <div class="row wrap">
+          <button id="fitPreview" type="button">Fit</button>
+          <button id="stitchZoom" type="button">Zoom to stitches</button>
+        </div>
+        <div class="row wrap">
+          <button id="exportFull" type="button">PNG, 1 px per stitch</button>
+          <button id="exportView" type="button">PNG of current view</button>
+          <button id="finalExport2" type="button" title="Every stitch, the 10-point blocks, the thread list and the settings as one JSON file">🧵 Final export (stitch chart)</button>
+        </div>
+      </section>
+    </aside>
+      <section class="card" id="stitchCard">
+        <div class="card-head">
+          <div class="row head-left">
+            <h2>Stitch preview</h2>
+            <label class="switch" title="Turn off to skip computing the pattern while exploring">
+              <input id="stitchEnabled" type="checkbox"> <span>Enabled</span>
+            </label>
+            <div class="seg" role="group" aria-label="Zoomed-in look" title="How stitches look when zoomed in">
+              <button type="button" data-look="stitch">/ Stitches</button>
+              <button type="button" data-look="pixels">▦ Pixels</button>
+            </div>
+            <select class="guide-select" title="Framing guide (F cycles, Shift+F turns)" aria-label="Framing guide"></select>
+            <button class="guide-orient" type="button" title="Turn the guide (Shift+F)">⟲</button>
+          </div>
+          <div class="row status">
+            <button id="generate2" type="button" title="New random palette (G)">🎲 Palette</button>
+            <button id="paletteBack2" type="button" title="Previous palette">↶</button>
+            <button class="colors-btn" type="button" title="Show/hide the color panel">🎨 Colors</button>
+            <button class="fs-btn" data-stage="stitchStage" type="button" title="Fullscreen (Esc to exit)">⛶ Fullscreen</button>
+          </div>
+        </div>
+        <div class="preview-box">
+          <canvas id="stitches"></canvas>
+          <div id="stitchOff" class="preview-off" hidden>Stitch preview is off. Turn on “Enabled” to compute the pattern.</div>
+        </div>
+        <div class="row between">
+          <span class="row status">
+            <progress id="progress" max="1" value="0" hidden></progress>
+            <span id="status" class="muted small"></span>
+          </span>
+          <span class="mono muted small"><span id="hover"></span> <span id="zoomInfo"></span></span>
+        </div>
+        <p class="muted small">Drag to move · two-finger scroll or pinch to zoom · zoom in to see individual stitches</p>
+        <!-- Thread spectrum: docked here; floats in fullscreen (moved by JS into the explorer when that is fullscreen). -->
+        <div class="spectrum-wrap" id="spectrumPanel">
+        <div class="float-bar"><span class="grip" title="Drag to move">⠿ Threads along the gradient</span><button type="button" class="float-hide">Hide</button></div>
+        <h3 title="Top: the gradient. Middle: the threads it becomes (picked from the gradient alone, so depth-mapping settings don't change them). Lines: where each thread's color is sampled. Bottom: how many stitches land on each part of the gradient.">Threads along the gradient</h3>
+        <canvas id="spectrum" class="spectrum" title="Top: gradient · 2nd: nearest yarn colors of the selected yarn set · 3rd: the chosen threads · lines: where each thread is sampled · bottom: stitches along the gradient. Click or drag to move the sample point of the thread under the pointer; drag the edge between two threads to move stitches between them."></canvas>
+        <div class="row between spectrum-foot">
+          <span id="spectrumInfo" class="muted small spectrum-info"></span>
+          <button id="threadsAuto" type="button" title="Throw away your thread edits and pick threads automatically again">Auto threads</button>
+        </div>
+        </div>
+        <div class="legend-wrap">
+        <div class="float-bar"><span class="grip" title="Drag to move">⠿ Threads</span><button type="button" class="float-hide">Hide</button></div>
+        <h3>Threads <span id="threadCount" class="muted"></span></h3>
+        <div class="row between legend-tools">
+          <span class="muted small">Click a thread to highlight where it goes.</span>
+          <div class="seg" id="legendSort" role="group" aria-label="Sort threads">
+            <button type="button" data-sort="usage" title="Most stitches first">Usage</button>
+            <button type="button" data-sort="palette" title="In gradient order, inside-the-set thread first">Palette</button>
+          </div>
+        </div>
+        <table class="legend">
+          <thead><tr><th></th><th id="legendCodeHead">DMC</th><th>Name</th><th class="num" id="legendBigHead" title="Big stitches, each over a same-color 2 × 2 block">10-pt</th><th class="num" id="legendSmallHead" title="Small stitches, each over one cell">20-pt</th><th class="num" title="Share of the pattern area">%</th><th class="num" title="Estimated yarn length, meters (see Yarn amount in the stitch controls)">m</th><th class="num" title="Estimated yarn weight, grams">g</th></tr></thead>
+          <tbody id="legend"></tbody>
+        </table>
+        <div id="yarnTotal" class="muted small yarn-total"></div>
+        </div>
+      </section>
+    </div>
+    </div>
+  </main>
+
+  <!-- Save: a name is required. A modal <dialog> sits in the top layer, so it also works in fullscreen. -->
+  <dialog id="saveDialog" aria-labelledby="saveDialogTitle">
+    <form id="saveForm">
+      <h2 id="saveDialogTitle">💾 Save settings</h2>
+      <label>Name this save
+        <input id="saveNameInput" type="text" maxlength="80" list="saveNameList" autocomplete="off" placeholder="e.g. Seahorse valley, blue">
+      </label>
+      <datalist id="saveNameList"></datalist>
+      <div id="saveFilePreview" class="muted small mono"></div>
+      <div id="saveDialogNote" class="muted small"></div>
+      <div class="row dialog-buttons">
+        <button type="button" id="saveCancel">Cancel</button>
+        <button type="submit" id="saveConfirm" class="primary" disabled>Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

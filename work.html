@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stitching view · Mandelbrot Cross-Stitch</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="work.css">
+</head>
+<body class="work">
+  <header class="top work-top">
+    <h1>🧵 Stitching view</h1>
+    <span id="chartInfo" class="muted">No chart loaded</span>
+    <div class="row file-tools">
+      <button id="openChart" type="button" title="Open a stitch chart (🧵 Final export in the designer), or drop it anywhere">📂 Open chart</button>
+      <input id="chartFile" type="file" accept=".json,application/json" hidden>
+      <button id="fsBtn" type="button" title="Fullscreen">⛶ Fullscreen</button>
+      <a class="btn-link" href="index.html" target="_blank" rel="noopener" title="Open the designer">✏️ Designer</a>
+      <span id="msg" class="muted small"></span>
+    </div>
+  </header>
+
+  <main class="work-main">
+    <aside class="panel work-panel" aria-label="Stitching tools">
+      <section>
+        <h2>Tools</h2>
+        <div class="seg tools" id="tools" role="group" aria-label="Tool">
+          <button type="button" data-tool="pan" title="Drag to move the view (1)">✋ Move</button>
+          <button type="button" data-tool="paint" title="Drag over stitches to mark them done (2)">✔ Mark</button>
+          <button type="button" data-tool="erase" title="Drag over stitches to unmark them (3)">⌫ Unmark</button>
+          <button type="button" data-tool="fill" title="Flood: click a stitch to mark its whole connected same-color patch done (click a finished one to unmark) (4)">🪣 Flood</button>
+        </div>
+        <label>Brush size <output id="brushOut"></output>
+          <input id="brush" type="range" min="0" max="7" step="1" title="Size of the ✔ Mark / ⌫ Unmark brush in stitches ([ and ] change it)">
+        </label>
+        <div class="row">
+          <label title="Which items the marking tools touch (an item = a thread in one stitch type)">Items
+            <select id="filterColor">
+              <option value="all">All colors</option>
+              <option value="hl">Highlighted item only</option>
+            </select>
+          </label>
+          <label title="Which stitch type the marking tools touch">Stitches
+            <select id="filterStyle">
+              <option value="both">10- and 20-point</option>
+              <option value="10">10-point only</option>
+              <option value="20">20-point only</option>
+            </select>
+          </label>
+        </div>
+        <label title="How the flood spreads through same-color stitches">Flood spreads across
+          <select id="floodConn">
+            <option value="4">Edges only</option>
+            <option value="8">Edges and corners</option>
+          </select>
+        </label>
+        <div class="row wrap">
+          <button id="undo" type="button" title="Undo the last marking (Cmd+Z)">↶ Undo</button>
+          <button id="fit" type="button" title="Show the whole piece (F)">Fit</button>
+          <button id="findNext" type="button" title="Jump to the next unfinished stitch of the highlighted color, or of any color (N)">🔍 Next undone</button>
+        </div>
+        <p class="muted small">Scroll or pinch to zoom · Space+drag moves with any tool · 1–4 tools · [ ] brush size · V visualization · Esc clears the highlight</p>
+      </section>
+
+      <section>
+        <h2>Show</h2>
+        <label class="inline"><input type="checkbox" id="showSymbols"> Chart symbols (when zoomed in)</label>
+        <label class="inline"><input type="checkbox" id="showGrid"> Grid, row and column numbers</label>
+        <label class="inline"><input type="checkbox" id="showCross"> Crosshair on the row and column under the pointer</label>
+        <label class="inline"><input type="checkbox" id="showDone"> Fade finished stitches</label>
+        <label title="Color each stitch by a property instead of its thread color (V cycles)">Color stitches by
+          <select id="visual"></select>
+        </label>
+        <div id="visualLegend" class="visual-legend"></div>
+        <div class="seg" role="group" aria-label="Look">
+          <button type="button" data-look="stitch">/ Stitches</button>
+          <button type="button" data-look="pixels">▦ Pixels</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Progress</h2>
+        <div class="total-progress">
+          <div class="total-pct" id="pctAll">0%</div>
+          <div class="total-detail">
+            <div class="done-bar big"><span class="bar"><span id="barAll"></span></span></div>
+            <div id="progressText" class="muted small"></div>
+          </div>
+        </div>
+        <p class="muted small">Each thread's 10-point and 20-point stitches are separate items (you rethread between them). Click an item to highlight it and fade everything else.</p>
+        <table class="legend work-legend">
+          <thead><tr><th></th><th>Thread · item</th><th class="num" title="Stitches (a 10-point stitch covers 2 × 2 cells and counts once)">Stitches</th><th class="num" title="Estimated yarn, meters">m</th><th>Done</th></tr></thead>
+          <tbody id="threads"></tbody>
+        </table>
+      </section>
+    </aside>
+
+    <section class="work-stage">
+      <div class="preview-box work-box">
+        <canvas id="stitches"></canvas>
+        <div id="dropHint" class="preview-off">Open a stitch chart (🧵 Final export in the designer) or drop it here.</div>
+      </div>
+      <div class="row between work-status">
+        <span id="hover" class="mono small"></span>
+        <span id="zoomInfo" class="mono muted small"></span>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/work.js"></script>
+</body>
+</html>
