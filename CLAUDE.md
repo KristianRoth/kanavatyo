@@ -357,6 +357,37 @@ A separate page for *doing* the stitching. The designer header links to it (🪡
   - **Adding a setting:** add a FIELDS line and don't bump `version`. Bump it only for incompatible renames, and then
     keep reading the old path too.
 
+## Hosting, phone and offline
+- **Live on GitHub Pages:** https://kristianroth.github.io/kanavatyo/ (designer) and `…/work.html` (stitching view).
+  The repo is `git@github.com:KristianRoth/kanavatyo.git`, branch `main`, served from the root; `.nojekyll` serves
+  files as-is. Everything is relative and static, so Netlify Drop also works.
+- **Commits:** the user must be the **only author**, with no Claude co-author trailers. Confirm before pushing.
+- **The user stitches on an Android phone in Firefox.** The stitching view is an installable PWA:
+  - `manifest.webmanifest` (start_url `work.html`, standalone) and `icons/icon-192.png` / `icon-512.png`.
+  - `sw.js` is **network-first**: online requests always hit the network, and the cache is only the offline fallback.
+    It precaches the stitching view's files. Bump `CACHE` when that list changes.
+  - `work.js` registers the SW except on localhost (`?sw=1` forces it), and calls `navigator.storage.persist()`
+    after opening a chart.
+- **Phone layout** (`work.css`, `@media (max-width: 900px), (pointer: coarse)`, `PHONE` in work.js):
+  - The canvas fills the screen. The top bar (`#mPct`, `#mInfo`) shows the total % and the tapped stitch's readout.
+  - The bottom toolbar (`.mobile-tools`) has Move, Mark, Unmark, Flood, Undo, Next and ☰.
+  - The side panel becomes a slide-up sheet (`body.sheet-open`) with an extra "Chart" section (Open, Fullscreen,
+    Designer). Tapping an item highlights it and closes the sheet.
+  - `PatternView` gets `budget: 6e6` and `miniSize: 96` on phones.
+- **Touch** (`PatternView` options, unused by the designer):
+  - `onTap(cell)` fires on a press released within 8 px (touch has no hover), and it sets the readout and crosshair.
+  - A second finger during a Mark/Unmark stroke sends `paint.stroke('cancel')`: work.js reverts the stroke with no
+    undo entry, and both fingers become a pinch.
+  - **Flood acts on tap** (not pointerdown), so dragging with Flood moves the view and a pinch never floods.
+- **Progress files** (⬇ Save progress / ⬆ Load progress): `{ format: "mandelbrot-stitch-progress", version: 1,
+  chartId, name, W, H, savedAt, doneCells, done }`, with `done` as base-36 run lengths starting with a run of 0s
+  (~6 KB). Loading asks when the chart id differs but W × H match. This is the backup, and the way to move progress
+  between devices.
+- **Tested:**
+  - Phone emulation (412 × 915, dpr 2.6, touch pointer events): stroke, cancel-to-pinch, tap readout, flood tap, the
+    progress round trip.
+  - Offline: SW with `?sw=1`, then stop the server and reload; the page, the chart and the progress all load.
+
 ## Running
 ES modules don't load from `file://`. Use the **no-cache dev server** (plain `http.server` let the browser keep stale
 modules, which made the user think a feature was broken):
@@ -390,7 +421,9 @@ App state persists in localStorage key `mandel-stitch-v2`. Bump it only if the s
 
 ## File map
 - `serve.py`: no-cache static dev server.
-- `work.html`, `work.css`, `js/work.js`: the stitching view (see Stitching view).
+- `work.html`, `work.css`, `js/work.js`: the stitching view (see Stitching view, and Hosting, phone and offline).
+- `manifest.webmanifest`, `sw.js`, `icons/`: PWA files for the stitching view.
+- `README.md`, `.gitignore`, `.nojekyll`: repo and GitHub Pages files.
 - `yarn-options.md`: yarn research (candidates, prices, strands for the canvas, Pirkka dokka order).
 - `index.html`: layout (header with save/load, color panel, explorer stage, stitch stage).
 - `style.css`: styles; light/dark via CSS variables; fullscreen floating panels; stage layout.
