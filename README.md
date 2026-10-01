@@ -1,7 +1,7 @@
 # Mandelbrot Cross-Stitch
 
 A browser app for designing a cross stitch of the Mandelbrot set: find a spot, choose colors, preview it as half
-stitches in DMC, Pirkka or Rauma yarn, and export a stitch-by-stitch chart. A separate **Stitching view** opens that
+stitches in DMC, Pirkka, Rauma or Novita yarn, and export a stitch-by-stitch chart. A separate **Stitching view** opens that
 chart on a phone, highlights one thread at a time and tracks progress.
 
 - **Designer:** https://kristianroth.github.io/kanavatyo/

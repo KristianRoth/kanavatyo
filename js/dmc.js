@@ -1,5 +1,6 @@
 import { PIRKKA_RAW } from './pirkka.js';
 import { RAUMA_RAW } from './rauma.js';
+import { NOVITA_RAW } from './novita.js';
 
 // DMC stranded cotton floss: code | name | R | G | B (approximate screen colors).
 const RAW = `
@@ -474,10 +475,12 @@ export const DMC_LAB = DMC.map(d => rgbToLab(...d.rgb));
 // DMC comes first, so DMC indices are the same as in DMC. Each yarn searches only its own entries.
 const PIRKKA = parse(PIRKKA_RAW);
 const RAUMA = parse(RAUMA_RAW);
+const NOVITA = parse(NOVITA_RAW);
 export const THREADS = [
   ...DMC.map(d => ({ ...d, brand: 'DMC' })),
   ...PIRKKA.map(d => ({ ...d, brand: 'Pirkka' })),
   ...RAUMA.map(d => ({ ...d, brand: 'Rauma' })),
+  ...NOVITA.map(d => ({ ...d, brand: 'Novita' })),
 ];
 export const THREAD_LAB = THREADS.map(d => rgbToLab(...d.rgb));
 const range = (a, n) => Array.from({ length: n }, (_, k) => a + k);
@@ -485,6 +488,7 @@ export const YARNS = {
   dmc: { label: 'DMC', long: 'DMC stranded cotton', ids: range(0, DMC.length) },
   pirkka: { label: 'Pirkka', long: 'Pirkka wool', ids: range(DMC.length, PIRKKA.length) },
   rauma: { label: 'Rauma', long: 'Rauma Finull wool', ids: range(DMC.length + PIRKKA.length, RAUMA.length) },
+  novita: { label: 'Novita', long: 'Novita 7 Veljestä wool', ids: range(DMC.length + PIRKKA.length + RAUMA.length, NOVITA.length) },
 };
 export const yarnOf = key => YARNS[key] || YARNS.dmc;
 
@@ -504,7 +508,7 @@ export function nearestThreadLab(lab, candidates) {
   return best;
 }
 
-// Nearest thread of a yarn ('dmc' | 'pirkka' | 'rauma') to an RGB color (cached per yarn).
+// Nearest thread of a yarn ('dmc' | 'pirkka' | 'rauma' | 'novita') to an RGB color (cached per yarn).
 const caches = {};
 export function nearestThread(r, g, b, yarn = 'dmc') {
   const y = yarnOf(yarn);
