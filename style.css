@@ -138,6 +138,28 @@ button:hover { border-color: var(--accent); }
 #threadsAuto { padding: 3px 8px; font-size: 12px; white-space: nowrap; }
 #threadsAuto:not(:disabled) { border-color: var(--accent); }
 .spectrum-wrap h3 { margin-top: 12px; }
+.band-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.band-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 3px; font-size: 11px;
+  font-variant-numeric: tabular-nums; border-radius: 5px;
+}
+.band-chip i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); }
+.band-chip.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.band-chip.manual::after { content: '✎'; color: var(--accent); }
+.band-picker { margin-top: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 6px; background: var(--panel); }
+.band-picker-head { align-items: center; gap: 6px; margin-bottom: 4px; }
+.band-picker-head span { flex: 1; min-width: 0; }
+.band-picker-head input { width: 170px; flex: none; margin: 0; padding: 4px 6px; }
+.band-picker-head button { padding: 3px 8px; }
+.band-picker-list { max-height: 220px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 3px; }
+.band-picker-list button {
+  display: flex; align-items: center; gap: 6px; padding: 3px 5px; text-align: left; font-size: 11px; line-height: 1.2;
+  border-radius: 5px; min-width: 0;
+}
+.band-picker-list button i { flex: none; width: 22px; height: 18px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); }
+.band-picker-list button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.band-picker-list button em { font-style: normal; color: var(--muted); font-size: 10px; }
+.band-picker-list button.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 /* Fullscreen: its own floating panel along the bottom of the screen (left of the thread list in the stitch view,
    left of the color panel in the explorer). Drag by the grip, resize from the corner. */
 .stage:fullscreen .spectrum-wrap {

@@ -17,9 +17,14 @@ const GRAB_LINE = 6, GRAB_EDGE = 5;
 const css = rgb => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 
 export class SpectrumView {
-  constructor(canvas, info, { onSample, onBoundary }) {
+  // onPickThread(k) (optional): right-click on segment k — choose its yarn from a list.
+  constructor(canvas, info, { onSample, onBoundary, onPickThread }) {
     this.canvas = canvas;
     this.info = info;
+    canvas.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      if (this.plan) onPickThread?.(this.segmentAt(e.offsetX));
+    });
     this.onSample = onSample;
     this.onBoundary = onBoundary;
     this.plan = null;
@@ -32,6 +37,7 @@ export class SpectrumView {
     new ResizeObserver(() => this.draw()).observe(canvas);
 
     canvas.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return; // right click opens the yarn list (contextmenu)
       canvas.setPointerCapture(e.pointerId);
       const handle = this.handleAt(e.offsetX, e.offsetY);
       this.press = { x0: e.offsetX, handle, dragging: false };

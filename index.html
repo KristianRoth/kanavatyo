@@ -305,6 +305,16 @@
           <span id="spectrumInfo" class="muted small spectrum-info"></span>
           <button id="threadsAuto" type="button" title="Throw away your thread edits and pick threads automatically again">Auto threads</button>
         </div>
+        <!-- One chip per band (thread segment): click to choose its exact yarn from the yarn set. -->
+        <div id="bandChips" class="band-chips"></div>
+        <div id="bandPicker" class="band-picker" hidden>
+          <div class="row band-picker-head">
+            <span id="bandPickerTitle" class="small"></span>
+            <input id="bandSearch" type="search" placeholder="Search code or name" autocomplete="off">
+            <button id="bandPickerClose" type="button" title="Close">✕</button>
+          </div>
+          <div id="bandPickerList" class="band-picker-list"></div>
+        </div>
         </div>
         <div class="legend-wrap">
         <div class="float-bar"><span class="grip" title="Drag to move">⠿ Threads</span><button type="button" class="float-hide">Hide</button></div>

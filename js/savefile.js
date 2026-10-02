@@ -26,7 +26,10 @@ const str = (maxLen = 200) => v => (typeof v === 'string' ? v.slice(0, maxLen) :
 const threadEdit = () => v => {
   if (v === false || v === null) return false;
   if (!v || typeof v !== 'object' || typeof v.key !== 'string' || !Array.isArray(v.segs) || !v.segs.length || v.segs.length > 1024) return undefined;
-  const segs = v.segs.map(s => ({ end: num(0, 1)(s?.end), sample: num(0, 1)(s?.sample), dmc: s?.dmc == null ? undefined : String(s.dmc) }));
+  const segs = v.segs.map(s => ({
+    end: num(0, 1)(s?.end), sample: num(0, 1)(s?.sample), dmc: s?.dmc == null ? undefined : String(s.dmc),
+    ...(s?.pick === true ? { pick: true } : {}),
+  }));
   return segs.every(s => s.end !== undefined && s.sample !== undefined && s.dmc) ? { key: v.key, segs } : undefined;
 };
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;

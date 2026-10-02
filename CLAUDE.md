@@ -93,6 +93,13 @@ threads of the 3.9/cm Penelope canvas; earlier plans used 3.9/cm = 468 × 351).
     percentile). This is what the mapping sliders move.
   - **Readout:** hover shows "click → <yarn>" when a click would change the thread, and the stitch % on each side
     of an edge. Edges ignore movement under 4 px.
+  - **Choosing a band's exact yarn:** a chip per band under the spectrum (`renderBandChips`). Click a chip, or
+    right-click a band in the spectrum, to open an in-panel list (`renderBandPicker`). It's inline, not a popup, so it
+    works when the panel floats in fullscreen.
+    - **The list:** the whole yarn set, nearest first (ΔE) to the gradient color at the band's sample, with search.
+      The automatic choice is labeled "auto", and the crisp-edge inside thread is excluded.
+    - **Choosing** sets `segs[k].thread` and `pick: true`, stored in `threadEdit` and save files. The chip shows ✎.
+      Moving that band's sample point clears the pick (back to the nearest yarn).
   - **"Auto threads"** discards the edits.
 - **Depth mapping:** Cyclic, Linear, Logarithmic, Balanced, **"Balanced to max depth · crisp edge"** (`edge`), and
   **"Single pass · detail balance"** (`spectrum`). See Color mapping.

@@ -429,7 +429,7 @@ function decodeEdit(list, size) {
     const thread = threadByCode(state.yarn).get(String(e.dmc));
     if (!(end > start) || end > size || thread === undefined) return null;
     const sample = Math.min(end - 1, Math.max(start, Math.floor(e.sample * size)));
-    segs.push({ start, end, sample, thread });
+    segs.push({ start, end, sample, thread, pick: e.pick === true });
     start = end;
   }
   return segs;
@@ -473,11 +473,76 @@ function editThreads(apply, done) {
   apply(segs, plan);
   state.threadEdit = {
     key: plan.gKey,
-    segs: segs.map(sg => ({ end: sg.end / plan.size, sample: (sg.sample + 0.5) / plan.size, dmc: THREADS[sg.thread].code })),
+    // pick: the yarn was chosen from the list (not the nearest one to the sample point).
+    segs: segs.map(sg => ({ end: sg.end / plan.size, sample: (sg.sample + 0.5) / plan.size, dmc: THREADS[sg.thread].code, ...(sg.pick ? { pick: true } : {}) })),
   };
   drawSpectrum();
   debounce('pattern', computePattern, done ? 0 : 40);
   if (done) save();
+}
+
+// ---------- Choosing a band's yarn by hand ----------
+// One chip per band (thread segment of the gradient). Clicking one opens a list of the yarn set, nearest first to
+// the gradient color at the band's sample point; choosing a yarn stores it as a thread edit (like dragging).
+// The list opens inside the panel (not as a popup), so it also works when the panel floats in fullscreen.
+let pickerBand = -1;
+const rgbCss = ([r, g, b]) => `rgb(${r},${g},${b})`;
+
+function renderBandChips(plan) {
+  const box = $('bandChips');
+  box.replaceChildren();
+  if (pickerBand >= plan.segs.length) { pickerBand = -1; $('bandPicker').hidden = true; }
+  plan.segs.forEach((sg, k) => {
+    const d = THREADS[sg.thread];
+    const manual = !!sg.pick;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'band-chip' + (k === pickerBand ? ' on' : '') + (manual ? ' manual' : '');
+    b.innerHTML = `<i style="background:${rgbCss(d.rgb)}"></i>${d.code}`;
+    b.title = `Band ${k + 1}: ${d.code} ${d.name}${manual ? ' (chosen by hand)' : ''}. Click to choose the yarn.`;
+    b.addEventListener('click', () => openBandPicker(pickerBand === k ? -1 : k));
+    box.appendChild(b);
+  });
+  if (pickerBand >= 0) renderBandPicker(plan);
+}
+
+function openBandPicker(k) {
+  pickerBand = k;
+  $('bandPicker').hidden = k < 0;
+  $('bandSearch').value = '';
+  drawSpectrum(); // chips and the list
+  if (k >= 0 && !matchMedia('(pointer: coarse)').matches) $('bandSearch').focus();
+}
+
+function renderBandPicker(plan = threadPlan()) {
+  const sg = plan.segs[pickerBand];
+  if (!sg) return;
+  const { lut, size } = plan;
+  const i = sg.sample, lab = rgbToLab(lut[i * 3], lut[i * 3 + 1], lut[i * 3 + 2]);
+  const nearest = plan.dmcOf(i);
+  const { crispEdge } = mapper();
+  const q = $('bandSearch').value.trim().toLowerCase();
+  const cur = THREADS[sg.thread];
+  $('bandPickerTitle').innerHTML = `Band ${pickerBand + 1} · sampled at ${((i / size) * 100).toFixed(0)}% <i class="swatch" style="background:rgb(${lut[i * 3]},${lut[i * 3 + 1]},${lut[i * 3 + 2]})"></i> · now <b>${cur.code} ${cur.name}</b>`;
+  const rows = yarnOf(state.yarn).ids
+    .filter(t => !(crispEdge && t === plan.insideThread)) // crisp edge: the inside thread stays the inside's own
+    .filter(t => !q || `${THREADS[t].code} ${THREADS[t].name}`.toLowerCase().includes(q))
+    .map(t => [t, Math.sqrt(labDist2(lab, THREAD_LAB[t]))])
+    .sort((a, b) => a[1] - b[1]);
+  const list = $('bandPickerList');
+  list.replaceChildren(...rows.map(([t, dE]) => {
+    const d = THREADS[t];
+    const b = document.createElement('button');
+    b.type = 'button';
+    if (t === sg.thread) b.className = 'on';
+    b.title = `${d.code} ${d.name} · ΔE ${dE.toFixed(1)} from the gradient color here${t === nearest ? ' (the automatic choice)' : ''}`;
+    b.innerHTML = `<i style="background:${rgbCss(d.rgb)}"></i><span><b>${d.code}</b> ${d.name}</span><em>${t === nearest ? 'auto' : dE.toFixed(0)}</em>`;
+    b.addEventListener('click', () => {
+      const k = pickerBand;
+      editThreads(segs => { segs[k].thread = t; segs[k].pick = true; }, true);
+    });
+    return b;
+  }));
 }
 
 function resetThreads() {
@@ -662,8 +727,11 @@ const spectrumView = new SpectrumView($('spectrum'), $('spectrumInfo'), {
       const sg = segs[k];
       sg.sample = Math.min(sg.end - 1, Math.max(sg.start, pos));
       sg.thread = plan.dmcOf(sg.sample);
+      sg.pick = false; // moving the sample point goes back to the nearest yarn
     }, done);
   },
+  // Right-click a segment: choose its yarn from the list.
+  onPickThread(k) { openBandPicker(k); },
   // Drag the edge between segments k−1 and k: gradient positions (and their stitches) change thread.
   onBoundary(k, pos, done) {
     editThreads(segs => { segs[k - 1].end = segs[k].start = Math.min(segs[k].sample, Math.max(segs[k - 1].sample + 1, pos)); }, done);
@@ -672,6 +740,7 @@ const spectrumView = new SpectrumView($('spectrum'), $('spectrumInfo'), {
 function drawSpectrum() {
   const plan = threadPlan();
   fillLabelThreads(plan.threads);
+  renderBandChips(plan);
   spectrumView.set(plan, state.stitchEnabled ? pattern : null, pattern ? patternView.highlight : null);
   $('threadsAuto').disabled = !plan.edited;
   $('threadsAuto').textContent = plan.edited ? '↺ Auto threads (edited)' : 'Auto threads';
@@ -1158,6 +1227,9 @@ function initControls() {
   bindNumber('maxColors', 'maxColors', { min: 2, max: 80, onChange: () => debounce('pattern', computePattern, 50) });
 
   $('threadsAuto').addEventListener('click', resetThreads);
+  $('bandSearch').addEventListener('input', () => renderBandPicker());
+  $('bandPickerClose').addEventListener('click', () => openBandPicker(-1));
+  $('bandSearch').addEventListener('keydown', e => { if (e.key === 'Escape') openBandPicker(-1); });
   initLabel();
   $('yarn').value = yarnKey();
   showYarn();
