@@ -4,7 +4,8 @@
 The user is making a **cross stitch of the Mandelbrot set** (half stitches `/`, kanavatyö on **Penelope canvas**, Taito shop, 39 holes/10 cm; likely 2 strands of ohut Pirkka or
 similar — see `yarn-options.md`). This is a local web app for
 finding a spot in the set, choosing colors, and previewing and exporting the result as a real stitch pattern in **DMC stranded cotton, Pirkka wool, Rauma
-Finull wool or Novita 7 Veljestä wool** (the **Yarn** switch). The final piece is **120 × 90 cm at 7.8 stitches/cm = 936 × 702 stitches** (petit point over single
+Finull wool, Novita 7 Veljestä wool, or the yarns in a store bin
+measured from the user's photos** (the **Yarn** switch). The final piece is **120 × 90 cm at 7.8 stitches/cm = 936 × 702 stitches** (petit point over single
 threads of the 3.9/cm Penelope canvas; earlier plans used 3.9/cm = 468 × 351).
 
 ## Working with this user
@@ -125,7 +126,7 @@ threads of the 3.9/cm Penelope canvas; earlier plans used 3.9/cm = 468 × 351).
   - **Pattern size:** stitches/cm, width/height in cm, width/height in stitches (linked; cap 20,000 per side and
     `MAX_STITCHES` = 40M in total).
   - **Threads:**
-    - **Yarn** (`state.yarn`: `dmc` | `pirkka` | `rauma` | `novita`) picks the thread catalog the pattern uses, and the thread list
+    - **Yarn** (`state.yarn`: `dmc` | `pirkka` | `rauma` | `novita` | `store`) picks the thread catalog the pattern uses, and the thread list
       header follows it.
     - **Yarn amount** (`<details>`, per yarn: `state.yarnSpec[yarn] = {m, g, strands, strandsBig, extra}`):
       - **Defaults:** 1 strand, +15%. Per ball: Pirkka ohut 400 m / 100 g (tex 125 × 2); DMC the same (the user
@@ -444,7 +445,7 @@ App state persists in localStorage key `mandel-stitch-v2`. Bump it only if the s
 - `js/generate.js`: random palette `STYLES`, `generatePalette(style)`, `oklch()`.
 - `js/dmc.js`: thread catalogs.
   - **Data:** 441 DMC threads (approximate screen RGB), and `DMC` / `DMC_LAB`, still used by generate.js's DMC styles.
-  - **Combined table:** `THREADS` = DMC, then Pirkka, then Rauma, then Novita, each `{code, name, rgb, brand}`, and `THREAD_LAB`. Pattern
+  - **Combined table:** `THREADS` = DMC, then Pirkka, then Rauma, then Novita, then Store, each `{code, name, rgb, brand}`, and `THREAD_LAB`. Pattern
     indices point into THREADS, and DMC indices are unchanged.
   - **Per-yarn lookups:** `YARNS` / `yarnOf(key)` give the per-yarn `ids`. `nearestThread(r, g, b, yarn)` is cached
     per yarn, and `nearestThreadLab(lab, candidates)`.
@@ -456,6 +457,14 @@ App state persists in localStorage key `mandel-stitch-v2`. Bump it only if the s
     the rest load lazily.
   - **Colors:** sampled from each variant's `secondThumbnail`, a knitted close-up, fetched as 256 px through
     `/_next/image` (the 35–85th lightness percentile of the central 80%).
+- `js/store.js`: "Store bin", 12 yarns from one store's 4.95 € bin, measured from the user's 8 photos in
+  `yarn_set_picture/`.
+  - **Brands:** mostly Novita 7 Veljestä, plus House Onni (ON1, ON2) and one unknown denim (X1).
+  - **Colors:** a patch per ball (the 35–85th lightness percentile), white-balanced per photo against the light-gray
+    terrazzo floor.
+  - **Codes:** read from the labels where legible (103, 268, 273, 064, 099); otherwise the nearest card color (170,
+    136, 011), or "7V" when unknown. 200 m / 100 g, 1 strand.
+  - **The photos are not committed** (the user's files).
 - `js/novita.js`: 35 Novita 7 Veljestä colors (Finnish names, codes like `011`), sampled from the AW2026 FI/SE
   yarn card PDF, page 5 (`pdftoppm -r 150`, the 35–85th lightness percentile of each swatch center).
 - `js/pirkka.js`: 75 Pirkka wool colors, sampled from the 2024 shade card photo (`~/Downloads/23_pirkka_2024.jpg`,

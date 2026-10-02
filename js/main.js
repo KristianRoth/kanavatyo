@@ -41,7 +41,7 @@ const DEFAULTS = {
   stitchW: 936,         // 120 cm
   stitchH: 702,         // 90 cm
   maxColors: 12,
-  yarn: 'dmc',          // thread catalog the pattern uses: 'dmc' (stranded cotton), 'pirkka', 'rauma' or 'novita' (wool)
+  yarn: 'dmc',          // thread catalog the pattern uses: 'dmc' (stranded cotton), 'pirkka', 'rauma', 'novita' or 'store' (wool)
   // Yarn amount estimate, per yarn: meters and grams per ball, strands per stitch, extra % for tails.
   // Pirkka (ohut, fingering weight): tex 125 × 2, 100 g = 400 m. DMC starts with the same numbers; edit to taste.
   // Rauma Finull: 50 g = 175 m.
@@ -50,6 +50,7 @@ const DEFAULTS = {
     pirkka: { m: 400, g: 100, strands: 0.5, strandsBig: 2, extra: 15 },
     rauma: { m: 175, g: 50, strands: 1, strandsBig: 2, extra: 15 },
     novita: { m: 200, g: 100, strands: 1, strandsBig: 1, extra: 15 },
+    store: { m: 200, g: 100, strands: 1, strandsBig: 1, extra: 15 },
   },
   selVisible: true,     // explorer: false = selection hidden (deselected) until a new one is drawn
   stitchEnabled: true,  // off = skip pattern computation while exploring
@@ -802,6 +803,7 @@ const YARN_SPEC_DEFAULTS = {
   rauma: { m: 175, g: 50, strands: 1, strandsBig: 2 },
   // Aran weight (about as thick as Pirkka paksu): one strand even for 10-point stitches.
   novita: { m: 200, g: 100, strands: 1, strandsBig: 1 },
+  store: { m: 200, g: 100, strands: 1, strandsBig: 1 }, // mostly 7 Veljestä (aran)
 };
 const yarnKey = () => (YARN_SPEC_DEFAULTS[state.yarn] ? state.yarn : 'dmc');
 function yarnSpec() {
