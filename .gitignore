@@ -1,6 +1,1 @@
-# Temporary test pages and files
-_bench*.html
-_work_test.html
-_chart.json
-_fs.css
-.DS_Store
+.pruner
