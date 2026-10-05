@@ -45,7 +45,7 @@ const store = (() => {
 
 const prefs = (() => {
   const defaults = {
-    tool: 'pan', symbols: true, grid: true, cross: true, done: true, look: 'stitch',
+    tool: 'pan', symbols: true, grid: true, texture: true, cross: true, done: true, look: 'stitch',
     brush: 0,              // index into BRUSHES
     filterColor: 'hl',     // 'all' | 'hl' (only the highlighted thread + stitch type, when one is highlighted)
     filterStyle: 'both',   // 'both' | '10' | '20'
@@ -666,7 +666,7 @@ const view = new PatternView($('stitches'), {
     view.requestDraw();
   },
   budget: PHONE ? 6e6 : undefined,
-  canvasGrid: HOLE, // grid lines along the canvas threads, as the user drew them (every 5 / 10 holes of the 10-point canvas)
+  canvasGrid: HOLE, canvasTexture: prefs.texture, // grid lines along the canvas threads, as the user drew them (every 5 / 10 holes of the 10-point canvas)
   miniSize: PHONE ? 96 : undefined,
   onZoom(z) {
     $('zoomInfo').textContent = z >= 1 ? `${z.toFixed(1)} px/stitch` : `1 px = ${(1 / z).toFixed(1)} stitches`;
@@ -815,6 +815,7 @@ function init() {
   bindCheck('showSymbols', 'symbols');
   bindCheck('showGrid', 'grid', () => view.setGrid(prefs.grid));
   bindCheck('showCross', 'cross');
+  bindCheck('showTexture', 'texture', () => view.setCanvasTexture(prefs.texture));
   bindCheck('showDone', 'done');
   const showBrush = () => {
     $('brush').value = prefs.brush;

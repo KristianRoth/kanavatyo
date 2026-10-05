@@ -10,6 +10,54 @@ const HOLE = [46, 38, 30];      // what shows through the holes at the stitch co
 const FABRIC = [244, 240, 230];
 const SURROUND = '#d6d0c1';
 const MINI = 180;               // overview inset size
+const CTILE = 128;              // canvas texture tile: one 10-point block (2 × 2 stitches)
+
+// The canvas texture tile (see PatternView.drawCanvasTexture), in block units 0…2 scaled to CTILE px: a pair of round
+// threads each way centred on the block (they cross under the middle of a 10-point stitch), small hole between them,
+// big hole at the corners. Mostly transparent, so the stitches show through.
+function canvasTile() {
+  const c = document.createElement('canvas');
+  c.width = c.height = CTILE;
+  const g = c.getContext('2d');
+  const u = CTILE / 2, half = 0.25 * u;
+  const thread = (pos, vertical) => {
+    const grad = vertical ? g.createLinearGradient(pos - half, 0, pos + half, 0) : g.createLinearGradient(0, pos - half, 0, pos + half);
+    grad.addColorStop(0, 'rgba(40,30,20,0.10)');
+    grad.addColorStop(0.3, 'rgba(255,248,232,0.16)');
+    grad.addColorStop(0.5, 'rgba(255,250,240,0.24)');
+    grad.addColorStop(0.7, 'rgba(255,248,232,0.16)');
+    grad.addColorStop(1, 'rgba(40,30,20,0.10)');
+    g.fillStyle = grad;
+    if (vertical) g.fillRect(pos - half, 0, 2 * half, CTILE); else g.fillRect(0, pos - half, CTILE, 2 * half);
+  };
+  for (const d of [-0.31, 0.31]) thread((1 + d) * u, false);
+  for (const d of [-0.31, 0.31]) thread((1 + d) * u, true);
+  const hole = (x, y, r, alpha) => {
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, `rgba(10,6,2,${alpha})`);
+    grad.addColorStop(0.6, `rgba(10,6,2,${alpha * 0.8})`);
+    grad.addColorStop(1, 'rgba(10,6,2,0)');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  };
+  for (const x of [0, CTILE]) for (const y of [0, CTILE]) hole(x, y, 0.36 * u, 0.42); // big hole, split over 4 corners
+  hole(u, u, 0.12 * u, 0.32); // small hole between the paired threads
+  // Holes between a thread pair one way and between pairs the other (the other corners of the 20-point stitches):
+  // narrow slots along the big gap.
+  const slot = (x, y, rx, ry) => {
+    g.save();
+    g.translate(x, y);
+    g.scale(rx, ry);
+    const grad = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+    grad.addColorStop(0, 'rgba(10,6,2,0.34)');
+    grad.addColorStop(1, 'rgba(10,6,2,0)');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(0, 0, 1, 0, Math.PI * 2); g.fill();
+    g.restore();
+  };
+  for (const e of [0, CTILE]) { slot(u, e, 0.12 * u, 0.3 * u); slot(e, u, 0.3 * u, 0.12 * u); }
+  return c;
+}
 
 const css = ([r, g, b]) => `rgb(${r},${g},${b})`;
 const mix = ([r, g, b], [r2, g2, b2], t) =>
@@ -111,7 +159,9 @@ export class PatternView {
   // miniSize (optional): overview inset size in CSS px (default MINI; smaller on phones).
   // canvasGrid (optional): grid lines along the canvas threads, as drawn on the real canvas: true, or a hole spacing
   // in stitches (2 = the 10-point canvas, whose holes are every other fine hole). See drawCanvasLines.
-  constructor(canvas, { onHover, onZoom, getFreeRect, afterDraw, paint, onTap, budget, miniSize, canvasGrid }) {
+  // canvasTexture (optional): a faint picture of the Penelope canvas (double threads and holes) over the stitches
+  // when zoomed in, so it's easy to see where each stitch goes on the real canvas. See drawCanvasTexture.
+  constructor(canvas, { onHover, onZoom, getFreeRect, afterDraw, paint, onTap, budget, miniSize, canvasGrid, canvasTexture }) {
     this.canvas = canvas;
     this.getFreeRect = getFreeRect;
     this.afterDraw = afterDraw;
@@ -121,6 +171,7 @@ export class PatternView {
     this.miniSize = miniSize || MINI;
     this.canvasGrid = !!canvasGrid;
     this.holeSpacing = typeof canvasGrid === 'number' ? canvasGrid : 1;
+    this.canvasTexture = !!canvasTexture;
     this.painting = null;
     this.paintPos = null;  // last position of the painting pointer (for the hand-off to a pinch)
     this.press = null;     // { id, x, y, moved } of the current press, for taps
@@ -307,6 +358,11 @@ export class PatternView {
     this.requestDraw();
   }
 
+  setCanvasTexture(on) {
+    this.canvasTexture = on;
+    this.requestDraw();
+  }
+
   setGrid(on) {
     this.grid = on;
     this.requestDraw();
@@ -475,6 +531,7 @@ export class PatternView {
       }
       if (this.grid && z >= 6 && this.look === 'pixels') this.drawCellLines(i0, j0, i1, j1, 'rgba(0,0,0,0.18)');
     }
+    if (this.canvasTexture) this.drawCanvasTexture(i0, j0, i1, j1);
     if (this.grid) this.drawCountLines(i0, j0, i1, j1);
     if (this.guide.kind !== 'none') {
       const x0 = -this.ox * z, y0 = -this.oy * z;
@@ -659,6 +716,26 @@ export class PatternView {
     for (let i = i0 + 1; i < i1; i++) { ctx.moveTo(X(i), Y(j0)); ctx.lineTo(X(i), Y(j1)); }
     for (let j = j0 + 1; j < j1; j++) { ctx.moveTo(X(i0), Y(j)); ctx.lineTo(X(i1), Y(j)); }
     ctx.stroke();
+  }
+
+  // A faint picture of the Penelope canvas over the stitches: one tile per 10-point block (2 × 2 stitches from the
+  // top-left, the fixed block grid) holds a pair of threads each way, the big hole at the block corners and the small
+  // hole between the paired threads at its centre. Every stitch corner is a hole, so the stitch ends can be read off
+  // it. Light threads and dark holes, so it reads on dark and pale stitches alike. Fades in from 8 to 16 px/stitch.
+  drawCanvasTexture(i0, j0, i1, j1) {
+    const { ctx, z } = this;
+    const a = Math.min(1, (z - 8) / 8);
+    if (a <= 0) return;
+    if (!this.texturePattern) this.texturePattern = ctx.createPattern(canvasTile(), 'repeat');
+    const pat = this.texturePattern;
+    const s = 2 * z / CTILE;
+    pat.setTransform(new DOMMatrix([s, 0, 0, s, -this.ox * z, -this.oy * z]));
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = pat;
+    const x0 = (i0 - this.ox) * z, y0 = (j0 - this.oy) * z;
+    ctx.fillRect(x0, y0, (i1 - i0) * z, (j1 - j0) * z);
+    ctx.restore();
   }
 
   // Bold counting lines every 10 stitches (every 100 when zoomed far out). Zoomed in they get thicker and have a light

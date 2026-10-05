@@ -195,6 +195,13 @@ A separate page for *doing* the stitching. The designer header links to it (🪡
       x = 2h − 1), through the middle of 10-point stitch h. `canvasGrid: true` = u 1 (fine holes).
   - **Rulers** count 10-point holes (h at 2h − 1, every 5/10/50/100), with the pointer's 10-point row and column in
     red. The readout gives the 10-point row/column plus the fine one. The designer keeps its cell-edge grid.
+  - **Canvas picture** (Show → "Canvas threads and holes", pref `texture`, default on; `canvasTexture` option →
+    `PatternView.drawCanvasTexture`): a faint Penelope canvas over the stitches, fading in from 8 to 16 px/stitch.
+    - **Tile** (`canvasTile`, 128 px = one 10-point block, a pattern with `setTransform` so it stays exactly aligned):
+      a pair of round threads each way centred on the block, the big hole at the block corners, the small hole between
+      the pairs at the centre (on the grid lines), and slot holes at the other two corners. So every stitch corner is
+      a visible hole. Light threads and dark holes read on dark and pale stitches.
+    - The big holes coincide with the renderer's dark corner gaps between 10-point stitches.
   - A crosshair band on the hovered row and column.
   - The hover readout gives the row, column, thread, stitch type, and done state.
 - **Progress tools:** ✋ Move, ✔ Mark / ⌫ Unmark (drag a square **brush**, 1–61 stitches: `BRUSHES`, slider or [ ],
