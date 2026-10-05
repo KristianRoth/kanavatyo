@@ -126,7 +126,7 @@ threads of the 3.9/cm Penelope canvas; earlier plans used 3.9/cm = 468 × 351).
   - **Pattern size:** stitches/cm, width/height in cm, width/height in stitches (linked; cap 20,000 per side and
     `MAX_STITCHES` = 40M in total).
   - **Threads:**
-    - **Yarn** (`state.yarn`: `dmc` | `pirkka` | `rauma` | `novita` | `store`) picks the thread catalog the pattern uses, and the thread list
+    - **Yarn** (`state.yarn`: `final` (default) | `dmc` | `pirkka` | `rauma` | `novita` | `store`) picks the thread catalog the pattern uses, and the thread list
       header follows it.
     - **Yarn amount** (`<details>`, per yarn: `state.yarnSpec[yarn] = {m, g, strands, strandsBig, extra}`):
       - **Defaults:** 1 strand, +15%. Per ball: Pirkka ohut 400 m / 100 g (tex 125 × 2); DMC the same (the user
@@ -445,7 +445,7 @@ App state persists in localStorage key `mandel-stitch-v2`. Bump it only if the s
 - `js/generate.js`: random palette `STYLES`, `generatePalette(style)`, `oklch()`.
 - `js/dmc.js`: thread catalogs.
   - **Data:** 441 DMC threads (approximate screen RGB), and `DMC` / `DMC_LAB`, still used by generate.js's DMC styles.
-  - **Combined table:** `THREADS` = DMC, then Pirkka, then Rauma, then Novita, then Store, each `{code, name, rgb, brand}`, and `THREAD_LAB`. Pattern
+  - **Combined table:** `THREADS` = DMC, then Pirkka, then Rauma, then Novita, then Store, then Final, each `{code, name, rgb, brand}`, and `THREAD_LAB`. Pattern
     indices point into THREADS, and DMC indices are unchanged.
   - **Per-yarn lookups:** `YARNS` / `yarnOf(key)` give the per-yarn `ids`. `nearestThread(r, g, b, yarn)` is cached
     per yarn, and `nearestThreadLab(lab, candidates)`.
@@ -457,6 +457,16 @@ App state persists in localStorage key `mandel-stitch-v2`. Bump it only if the s
     the rest load lazily.
   - **Colors:** sampled from each variant's `secondThumbnail`, a knitted close-up, fetched as 256 px through
     `/_next/image` (the 35–85th lightness percentile of the central 80%).
+- `js/final.js`: **"Final", the 10 yarns the user will actually stitch with**, and the default yarn.
+  - **F01–F09:** measured from the user's photos of each ball on white paper (`yarn_set_final/`, not committed).
+    - **Orientation:** use `magick -auto-orient`; the photos carry EXIF rotation.
+    - **White balance:** per photo, clean paper beside or above the ball → neutral 238 (corrects white balance *and*
+      exposure). Avoid paper in the ball's shadow.
+    - **Color:** the 50–90th lightness percentile of a yarn patch clear of the label.
+    - **Names:** invented on purpose (Raven, Plum Bark, Driftwood, Fox, Honeycomb, Buttermilk, Kingfisher, Frost,
+      First Snow). The user asked not to match them to brands.
+  - **F10 Laivasto:** Novita 7 Veljestä 170 from the yarn card.
+  - **Amounts:** 200 m / 100 g, 1 strand.
 - `js/store.js`: "Store bin", 12 yarns from one store's 4.95 € bin, measured from the user's 8 photos in
   `yarn_set_picture/`.
   - **Brands:** mostly Novita 7 Veljestä, plus House Onni (ON1, ON2) and one unknown denim (X1).

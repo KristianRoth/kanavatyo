@@ -74,7 +74,7 @@ const FIELDS = [
   ['colors.detailBalance', 'detailBalance', num(0, 1)],
 
   ['render.maxIterations', 'maxIter', int(20, 1e6)],
-  ['render.yarn', 'yarn', oneOf('dmc', 'pirkka', 'rauma', 'novita', 'store')],
+  ['render.yarn', 'yarn', oneOf('dmc', 'pirkka', 'rauma', 'novita', 'store', 'final')],
   ['label.enabled', 'label.on', bool()],
   ['label.text', 'label.text', str(120)],
   ['label.position', 'label.pos', oneOf('bl', 'bc', 'br')],
@@ -83,7 +83,7 @@ const FIELDS = [
   ['label.textThread', 'label.fg', str(20)],
   ['label.background', 'label.bgMode', oneOf('none', 'outline', 'band')],
   ['label.backgroundThread', 'label.bg', str(20)],
-  ...['dmc', 'pirkka', 'rauma', 'novita', 'store'].flatMap(y => [
+  ...['dmc', 'pirkka', 'rauma', 'novita', 'store', 'final'].flatMap(y => [
     [`render.yarnAmount.${y}.metersPerBall`, `yarnSpec.${y}.m`, num(1, 100000)],
     [`render.yarnAmount.${y}.gramsPerBall`, `yarnSpec.${y}.g`, num(1, 10000)],
     [`render.yarnAmount.${y}.strandsPerStitch`, `yarnSpec.${y}.strands`, num(0.25, 12)],
