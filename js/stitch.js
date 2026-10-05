@@ -109,7 +109,8 @@ export class PatternView {
   // onTap (optional): (cell | null) → a press released without moving (touch has no hover).
   // budget (optional): max device pixels of the rasterized stitch image (default STITCH_BUDGET; less on phones).
   // miniSize (optional): overview inset size in CSS px (default MINI; smaller on phones).
-  constructor(canvas, { onHover, onZoom, getFreeRect, afterDraw, paint, onTap, budget, miniSize }) {
+  // canvasGrid (optional): grid lines along the canvas threads, as drawn on the real canvas (see drawCountLines).
+  constructor(canvas, { onHover, onZoom, getFreeRect, afterDraw, paint, onTap, budget, miniSize, canvasGrid }) {
     this.canvas = canvas;
     this.getFreeRect = getFreeRect;
     this.afterDraw = afterDraw;
@@ -117,6 +118,7 @@ export class PatternView {
     this.onTap = onTap;
     this.budget = budget || STITCH_BUDGET;
     this.miniSize = miniSize || MINI;
+    this.canvasGrid = !!canvasGrid;
     this.painting = null;
     this.paintPos = null;  // last position of the painting pointer (for the hand-off to a pinch)
     this.press = null;     // { id, x, y, moved } of the current press, for taps
@@ -661,6 +663,7 @@ export class PatternView {
   // halo under a dark core, so they read on black and on pale areas alike; from 16 px/stitch fainter 5-stitch lines
   // help counting in between.
   drawCountLines(i0, j0, i1, j1) {
+    if (this.canvasGrid) return this.drawCanvasLines(i0, j0, i1, j1);
     const { ctx, z } = this;
     const { W, H } = this.pattern;
     // Only when there's room between them: a dense grid hides the picture in zoomed-out views.
@@ -703,6 +706,38 @@ export class PatternView {
     ctx.strokeStyle = 'rgba(20,15,10,0.9)';
     ctx.lineWidth = w;
     ctx.stroke();
+  }
+
+  // Grid as the user draws it on the canvas: lines can't go through the holes, so they run along the threads. Holes
+  // are the stitch corners (x = 0, 1, 2 … from the top-left) and a half stitch crosses the thread intersection in its
+  // middle, so the line after h holes (thread between hole h and h + 1) runs through the middle of stitch column h:
+  // x = h − 0.5. A thin line every 5 holes and a thick one every 10 (every 50 / 100 when zoomed far out).
+  drawCanvasLines(i0, j0, i1, j1) {
+    const { ctx, z } = this;
+    const { W, H } = this.pattern;
+    const minor = z * 5 >= 8 ? 5 : z * 50 >= 8 ? 50 : 0;
+    if (!minor) return;
+    const major = minor * 2;
+    const lines = (every, skip, width) => {
+      const off = width % 2 ? 0.5 : 0; // crisp lines on the pixel grid
+      const X = x => Math.round((x - this.ox) * z) + off, Y = y => Math.round((y - this.oy) * z) + off;
+      ctx.beginPath();
+      for (let h = Math.ceil(i0 / every) * every; h <= i1 + 1; h += every) {
+        if (h > 0 && h <= W && !(skip && h % skip === 0)) { ctx.moveTo(X(h - 0.5), Y(j0)); ctx.lineTo(X(h - 0.5), Y(j1)); }
+      }
+      for (let h = Math.ceil(j0 / every) * every; h <= j1 + 1; h += every) {
+        if (h > 0 && h <= H && !(skip && h % skip === 0)) { ctx.moveTo(X(i0), Y(h - 0.5)); ctx.lineTo(X(i1), Y(h - 0.5)); }
+      }
+    };
+    const stroke = (width, light, dark) => {
+      ctx.strokeStyle = light; ctx.lineWidth = width + 2; ctx.stroke();
+      ctx.strokeStyle = dark; ctx.lineWidth = width; ctx.stroke();
+    };
+    const wMajor = z >= 24 ? 3 : z >= 8 ? 2 : 1;
+    lines(minor, major, 1);
+    stroke(1, 'rgba(255,255,255,0.35)', 'rgba(20,15,10,0.7)');
+    lines(major, 0, wMajor);
+    stroke(wMajor, 'rgba(255,255,255,0.6)', 'rgba(20,15,10,0.95)');
   }
 
   // Overview inset showing where the current view is, when zoomed in.

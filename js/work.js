@@ -607,11 +607,12 @@ function afterDraw(ctx, v) {
   }
 }
 
-// Row and column numbers along the top and left edges, at the 10-stitch count lines (or every 50 / 100).
+// Row and column numbers along the top and left edges, on the grid lines: the line after h holes runs along the thread
+// through the middle of stitch h (see PatternView.drawCanvasLines), labelled h. Every 5 / 10 / 50 / 100 holes.
 function drawRulers(ctx, v) {
   const { ox, oy, z, i0, j0, i1, j1, W, H } = v;
-  const step = z * 10 >= 26 ? 10 : z * 50 >= 26 ? 50 : 100;
-  if (z * step < 26) return;
+  const step = [5, 10, 50, 100].find(s => z * s >= 26);
+  if (!step) return;
   const cw = view.cssW, ch = view.cssH;
   ctx.save();
   ctx.fillStyle = 'rgba(20, 18, 14, 0.72)';
@@ -623,13 +624,13 @@ function drawRulers(ctx, v) {
   ctx.textAlign = 'center';
   // Regular numbers make room for the pointer's (red) numbers.
   const hx = hoverCell ? (hoverCell.i + 0.5 - ox) * z : -1e9, hy = hoverCell ? (hoverCell.j + 0.5 - oy) * z : -1e9;
-  for (let i = Math.ceil(Math.max(i0, 1) / step) * step; i <= Math.min(i1, W); i += step) {
-    const x = (i - ox) * z;
+  for (let i = Math.ceil(Math.max(i0, 1) / step) * step; i <= Math.min(i1 + 1, W); i += step) {
+    const x = (i - 0.5 - ox) * z;
     if (x > 34 && Math.abs(x - hx) > 22) ctx.fillText(String(i), x, 8);
   }
   ctx.textAlign = 'right';
-  for (let j = Math.ceil(Math.max(j0, 1) / step) * step; j <= Math.min(j1, H); j += step) {
-    const y = (j - oy) * z;
+  for (let j = Math.ceil(Math.max(j0, 1) / step) * step; j <= Math.min(j1 + 1, H); j += step) {
+    const y = (j - 0.5 - oy) * z;
     if (y > 22 && Math.abs(y - hy) > 11) ctx.fillText(String(j), 27, y);
   }
   if (hoverCell) { // the pointer's column and row numbers, highlighted on the rulers
@@ -659,6 +660,7 @@ const view = new PatternView($('stitches'), {
     view.requestDraw();
   },
   budget: PHONE ? 6e6 : undefined,
+  canvasGrid: true, // grid lines along the canvas threads, as the user drew them (every 5 / 10 holes)
   miniSize: PHONE ? 96 : undefined,
   onZoom(z) {
     $('zoomInfo').textContent = z >= 1 ? `${z.toFixed(1)} px/stitch` : `1 px = ${(1 / z).toFixed(1)} stitches`;

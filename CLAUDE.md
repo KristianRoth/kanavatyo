@@ -187,7 +187,14 @@ A separate page for *doing* the stitching. The designer header links to it (🪡
     `PatternView.setHighlight(t, 'big' | 'small')`, whose faded variants use color index t + F in the renderer and
     are per cell in the tiles.
   - Chart symbols at ≥ 12 px/stitch, one large symbol per 10-point stitch.
-  - Row and column rulers every 10, 50 or 100, with the pointer's row and column in red.
+  - **The grid matches the user's lines on the real canvas** (`canvasGrid: true` → `PatternView.drawCanvasLines`).
+    - **Why:** lines can't go through holes, so the user drew them along the threads, starting from the top-left: a
+      thin line every 5 holes and a thick one every 10.
+    - **Geometry:** holes are stitch corners and a half stitch crosses the thread in its middle, so the line after
+      h holes is at x = h − 0.5, through the middle of stitch column/row h. The old cell-edge grid was half a
+      stitch off.
+  - **Rulers** label those lines (h at h − 0.5, every 5/10/50/100), with the pointer's row and column in red. The
+    designer keeps its cell-edge grid.
   - A crosshair band on the hovered row and column.
   - The hover readout gives the row, column, thread, stitch type, and done state.
 - **Progress tools:** ✋ Move, ✔ Mark / ⌫ Unmark (drag a square **brush**, 1–61 stitches: `BRUSHES`, slider or [ ],
