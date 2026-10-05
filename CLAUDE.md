@@ -470,6 +470,7 @@ App state persists in localStorage key `mandel-stitch-v2`. Bump it only if the s
     - **Color:** the 50–90th lightness percentile of a yarn patch clear of the label.
     - **Names:** invented on purpose (Raven, Plum Bark, Driftwood, Fox, Honeycomb, Buttermilk, Kingfisher, Frost,
       First Snow). The user asked not to match them to brands.
+  - **F09 First Snow:** white (242 240 235), set by hand at the user's request; the photo measured a shaded gray.
   - **F10 Laivasto:** Novita 7 Veljestä 170 from the yarn card.
   - **Amounts:** 200 m / 100 g, 1 strand.
 - `js/store.js`: "Store bin", 12 yarns from one store's 4.95 € bin, measured from the user's 8 photos in
