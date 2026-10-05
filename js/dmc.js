@@ -3,6 +3,7 @@ import { RAUMA_RAW } from './rauma.js';
 import { NOVITA_RAW } from './novita.js';
 import { STORE_RAW } from './store.js';
 import { FINAL_RAW } from './final.js';
+import { FINAL2_RAW } from './final2.js';
 
 // DMC stranded cotton floss: code | name | R | G | B (approximate screen colors).
 const RAW = `
@@ -480,6 +481,7 @@ const RAUMA = parse(RAUMA_RAW);
 const NOVITA = parse(NOVITA_RAW);
 const STORE = parse(STORE_RAW);
 const FINAL = parse(FINAL_RAW);
+const FINAL2 = parse(FINAL2_RAW);
 export const THREADS = [
   ...DMC.map(d => ({ ...d, brand: 'DMC' })),
   ...PIRKKA.map(d => ({ ...d, brand: 'Pirkka' })),
@@ -487,6 +489,7 @@ export const THREADS = [
   ...NOVITA.map(d => ({ ...d, brand: 'Novita' })),
   ...STORE.map(d => ({ ...d, brand: 'Store' })),
   ...FINAL.map(d => ({ ...d, brand: 'Final' })),
+  ...FINAL2.map(d => ({ ...d, brand: 'Final v2' })),
 ];
 export const THREAD_LAB = THREADS.map(d => rgbToLab(...d.rgb));
 const range = (a, n) => Array.from({ length: n }, (_, k) => a + k);
@@ -497,6 +500,7 @@ export const YARNS = {
   novita: { label: 'Novita', long: 'Novita 7 Veljestä wool', ids: range(DMC.length + PIRKKA.length + RAUMA.length, NOVITA.length) },
   store: { label: 'Store', long: 'Store bin yarns (from photos)', ids: range(DMC.length + PIRKKA.length + RAUMA.length + NOVITA.length, STORE.length) },
   final: { label: 'Final', long: 'Final yarns', ids: range(DMC.length + PIRKKA.length + RAUMA.length + NOVITA.length + STORE.length, FINAL.length) },
+  final2: { label: 'Final v2', long: 'Final yarns v2 (resampled)', ids: range(DMC.length + PIRKKA.length + RAUMA.length + NOVITA.length + STORE.length + FINAL.length, FINAL2.length) },
 };
 export const yarnOf = key => YARNS[key] || YARNS.dmc;
 
@@ -516,7 +520,7 @@ export function nearestThreadLab(lab, candidates) {
   return best;
 }
 
-// Nearest thread of a yarn ('dmc' | 'pirkka' | 'rauma' | 'novita' | 'store' | 'final') to an RGB color (cached per yarn).
+// Nearest thread of a yarn ('dmc' | 'pirkka' | 'rauma' | 'novita' | 'store' | 'final' | 'final2') to an RGB color (cached per yarn).
 const caches = {};
 export function nearestThread(r, g, b, yarn = 'dmc') {
   const y = yarnOf(yarn);

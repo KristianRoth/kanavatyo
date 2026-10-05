@@ -131,7 +131,7 @@ threads of the 3.9/cm Penelope canvas; earlier plans used 3.9/cm = 468 × 351).
   - **Pattern size:** stitches/cm, width/height in cm, width/height in stitches (linked; cap 20,000 per side and
     `MAX_STITCHES` = 40M in total).
   - **Threads:**
-    - **Yarn** (`state.yarn`: `final` (default) | `dmc` | `pirkka` | `rauma` | `novita` | `store`) picks the thread catalog the pattern uses, and the thread list
+    - **Yarn** (`state.yarn`: `final` (default) | `final2` | `dmc` | `pirkka` | `rauma` | `novita` | `store`) picks the thread catalog the pattern uses, and the thread list
       header follows it.
     - **Yarn amount** (`<details>`, per yarn: `state.yarnSpec[yarn] = {m, g, strands, strandsBig, extra}`):
       - **Defaults:** 1 strand, +15%. Per ball: Pirkka ohut 400 m / 100 g (tex 125 × 2); DMC the same (the user
@@ -450,7 +450,7 @@ App state persists in localStorage key `mandel-stitch-v2`. Bump it only if the s
 - `js/generate.js`: random palette `STYLES`, `generatePalette(style)`, `oklch()`.
 - `js/dmc.js`: thread catalogs.
   - **Data:** 441 DMC threads (approximate screen RGB), and `DMC` / `DMC_LAB`, still used by generate.js's DMC styles.
-  - **Combined table:** `THREADS` = DMC, then Pirkka, then Rauma, then Novita, then Store, then Final, each `{code, name, rgb, brand}`, and `THREAD_LAB`. Pattern
+  - **Combined table:** `THREADS` = DMC, then Pirkka, then Rauma, then Novita, then Store, then Final, then Final v2, each `{code, name, rgb, brand}`, and `THREAD_LAB`. Pattern
     indices point into THREADS, and DMC indices are unchanged.
   - **Per-yarn lookups:** `YARNS` / `yarnOf(key)` give the per-yarn `ids`. `nearestThread(r, g, b, yarn)` is cached
     per yarn, and `nearestThreadLab(lab, candidates)`.
@@ -472,6 +472,16 @@ App state persists in localStorage key `mandel-stitch-v2`. Bump it only if the s
       First Snow). The user asked not to match them to brands.
   - **F10 Laivasto:** Novita 7 Veljestä 170 from the yarn card.
   - **Amounts:** 200 m / 100 g, 1 strand.
+- `js/final2.js`: **"Final v2"**, the same 10 yarns (same codes and names), resampled more carefully. This is the
+  method to reuse for photo-measured sets:
+  - **Yarn:** two big boxes per ball, both sides of the label, verified on overlays. The color is the 70–95th
+    lightness percentile (the lit strands without shine). The 50–90% band mixed in shade and made everything dull,
+    white included.
+  - **Paper:** per photo, the brightest even paper patch (spread ≤ 13) among candidates around the frame.
+  - **White is white:** the white ball's lit/paper ratio sets the paper → output scale for every photo, so F09 =
+    240 240 240.
+  - **F10 Laivasto:** estimated from the card by interpolating L* between card 099/064 and their measured balls,
+    keeping the card's hue. The card crushes darks unevenly, so one gain can't convert it.
 - `js/store.js`: "Store bin", 12 yarns from one store's 4.95 € bin, measured from the user's 8 photos in
   `yarn_set_picture/`.
   - **Brands:** mostly Novita 7 Veljestä, plus House Onni (ON1, ON2) and one unknown denim (X1).

@@ -52,6 +52,7 @@ const DEFAULTS = {
     novita: { m: 200, g: 100, strands: 1, strandsBig: 1, extra: 15 },
     store: { m: 200, g: 100, strands: 1, strandsBig: 1, extra: 15 },
     final: { m: 200, g: 100, strands: 1, strandsBig: 1, extra: 15 },
+    final2: { m: 200, g: 100, strands: 1, strandsBig: 1, extra: 15 },
   },
   selVisible: true,     // explorer: false = selection hidden (deselected) until a new one is drawn
   stitchEnabled: true,  // off = skip pattern computation while exploring
@@ -854,6 +855,7 @@ const YARN_SPEC_DEFAULTS = {
   novita: { m: 200, g: 100, strands: 1, strandsBig: 1 },
   store: { m: 200, g: 100, strands: 1, strandsBig: 1 }, // mostly 7 Veljestä (aran)
   final: { m: 200, g: 100, strands: 1, strandsBig: 1 }, // aran weight
+  final2: { m: 200, g: 100, strands: 1, strandsBig: 1 },
 };
 const yarnKey = () => (YARN_SPEC_DEFAULTS[state.yarn] ? state.yarn : 'dmc');
 function yarnSpec() {

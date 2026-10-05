@@ -2,10 +2,10 @@
 // Network-first: while online every request goes to the network, so updates arrive right away and the app is never
 // served stale code (the confusion the no-cache dev server exists for); the cache is only the offline fallback.
 // Bump CACHE when the precache list changes.
-const CACHE = 'mandel-stitch-v4';
+const CACHE = 'mandel-stitch-v5';
 const PRECACHE = [
   'work.html', 'work.css', 'style.css', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
-  'js/work.js', 'js/stitch.js', 'js/dmc.js', 'js/pirkka.js', 'js/rauma.js', 'js/novita.js', 'js/store.js', 'js/final.js', 'js/selector.js', 'js/guides.js',
+  'js/work.js', 'js/stitch.js', 'js/dmc.js', 'js/pirkka.js', 'js/rauma.js', 'js/novita.js', 'js/store.js', 'js/final.js', 'js/final2.js', 'js/selector.js', 'js/guides.js',
 ];
 
 self.addEventListener('install', event => {
