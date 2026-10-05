@@ -109,7 +109,8 @@ export class PatternView {
   // onTap (optional): (cell | null) → a press released without moving (touch has no hover).
   // budget (optional): max device pixels of the rasterized stitch image (default STITCH_BUDGET; less on phones).
   // miniSize (optional): overview inset size in CSS px (default MINI; smaller on phones).
-  // canvasGrid (optional): grid lines along the canvas threads, as drawn on the real canvas (see drawCountLines).
+  // canvasGrid (optional): grid lines along the canvas threads, as drawn on the real canvas: true, or a hole spacing
+  // in stitches (2 = the 10-point canvas, whose holes are every other fine hole). See drawCanvasLines.
   constructor(canvas, { onHover, onZoom, getFreeRect, afterDraw, paint, onTap, budget, miniSize, canvasGrid }) {
     this.canvas = canvas;
     this.getFreeRect = getFreeRect;
@@ -119,6 +120,7 @@ export class PatternView {
     this.budget = budget || STITCH_BUDGET;
     this.miniSize = miniSize || MINI;
     this.canvasGrid = !!canvasGrid;
+    this.holeSpacing = typeof canvasGrid === 'number' ? canvasGrid : 1;
     this.painting = null;
     this.paintPos = null;  // last position of the painting pointer (for the hand-off to a pinch)
     this.press = null;     // { id, x, y, moved } of the current press, for taps
@@ -708,25 +710,27 @@ export class PatternView {
     ctx.stroke();
   }
 
-  // Grid as the user draws it on the canvas: lines can't go through the holes, so they run along the threads. Holes
-  // are the stitch corners (x = 0, 1, 2 … from the top-left) and a half stitch crosses the thread intersection in its
-  // middle, so the line after h holes (thread between hole h and h + 1) runs through the middle of stitch column h:
-  // x = h − 0.5. A thin line every 5 holes and a thick one every 10 (every 50 / 100 when zoomed far out).
+  // Grid as the user draws it on the canvas: lines can't go through the holes, so they run along the threads. With a
+  // hole every u stitches from the top-left (u = 1: the fine canvas; u = 2: the 10-point canvas, its big holes between
+  // the double threads), a stitch crosses the thread in its middle, so the line after h holes runs through the middle
+  // of (10-point) stitch h: x = u·h − u/2. A thin line every 5 holes and a thick one every 10 (50 / 100 zoomed out).
   drawCanvasLines(i0, j0, i1, j1) {
     const { ctx, z } = this;
     const { W, H } = this.pattern;
-    const minor = z * 5 >= 8 ? 5 : z * 50 >= 8 ? 50 : 0;
+    const u = this.holeSpacing;
+    const minor = z * u * 5 >= 8 ? 5 : z * u * 50 >= 8 ? 50 : 0;
     if (!minor) return;
     const major = minor * 2;
     const lines = (every, skip, width) => {
       const off = width % 2 ? 0.5 : 0; // crisp lines on the pixel grid
       const X = x => Math.round((x - this.ox) * z) + off, Y = y => Math.round((y - this.oy) * z) + off;
+      const at = h => u * h - u / 2;
       ctx.beginPath();
-      for (let h = Math.ceil(i0 / every) * every; h <= i1 + 1; h += every) {
-        if (h > 0 && h <= W && !(skip && h % skip === 0)) { ctx.moveTo(X(h - 0.5), Y(j0)); ctx.lineTo(X(h - 0.5), Y(j1)); }
+      for (let h = Math.ceil(i0 / u / every) * every; at(h) <= i1; h += every) {
+        if (h > 0 && at(h) < W && !(skip && h % skip === 0)) { ctx.moveTo(X(at(h)), Y(j0)); ctx.lineTo(X(at(h)), Y(j1)); }
       }
-      for (let h = Math.ceil(j0 / every) * every; h <= j1 + 1; h += every) {
-        if (h > 0 && h <= H && !(skip && h % skip === 0)) { ctx.moveTo(X(i0), Y(h - 0.5)); ctx.lineTo(X(i1), Y(h - 0.5)); }
+      for (let h = Math.ceil(j0 / u / every) * every; at(h) <= j1; h += every) {
+        if (h > 0 && at(h) < H && !(skip && h % skip === 0)) { ctx.moveTo(X(i0), Y(at(h))); ctx.lineTo(X(i1), Y(at(h))); }
       }
     };
     const stroke = (width, light, dark) => {

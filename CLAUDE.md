@@ -187,14 +187,14 @@ A separate page for *doing* the stitching. The designer header links to it (🪡
     `PatternView.setHighlight(t, 'big' | 'small')`, whose faded variants use color index t + F in the renderer and
     are per cell in the tiles.
   - Chart symbols at ≥ 12 px/stitch, one large symbol per 10-point stitch.
-  - **The grid matches the user's lines on the real canvas** (`canvasGrid: true` → `PatternView.drawCanvasLines`).
-    - **Why:** lines can't go through holes, so the user drew them along the threads, starting from the top-left: a
-      thin line every 5 holes and a thick one every 10.
-    - **Geometry:** holes are stitch corners and a half stitch crosses the thread in its middle, so the line after
-      h holes is at x = h − 0.5, through the middle of stitch column/row h. The old cell-edge grid was half a
-      stitch off.
-  - **Rulers** label those lines (h at h − 0.5, every 5/10/50/100), with the pointer's row and column in red. The
-    designer keeps its cell-edge grid.
+  - **The grid matches the user's lines on the real canvas** (`canvasGrid: HOLE` → `PatternView.drawCanvasLines`).
+    - **Why:** lines can't go through holes, so the user drew them along the threads, starting from the top-left. They
+      count the **whole canvas as 10-point** (`HOLE = 2` in work.js: a big hole every 2 stitches, between the double
+      threads): a thin line every 5 big holes (10 stitches) and a thick one every 10 (20 stitches).
+    - **Geometry:** a stitch crosses the thread in its middle, so the line after h holes is at x = u·h − u/2 (u = 2:
+      x = 2h − 1), through the middle of 10-point stitch h. `canvasGrid: true` = u 1 (fine holes).
+  - **Rulers** count 10-point holes (h at 2h − 1, every 5/10/50/100), with the pointer's 10-point row and column in
+    red. The readout gives the 10-point row/column plus the fine one. The designer keeps its cell-edge grid.
   - A crosshair band on the hovered row and column.
   - The hover readout gives the row, column, thread, stitch type, and done state.
 - **Progress tools:** ✋ Move, ✔ Mark / ⌫ Unmark (drag a square **brush**, 1–61 stitches: `BRUSHES`, slider or [ ],

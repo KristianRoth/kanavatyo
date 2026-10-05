@@ -13,6 +13,9 @@ const CHART_FORMAT = 'mandelbrot-stitch-chart';
 const PROGRESS_FORMAT = 'mandelbrot-stitch-progress';
 // Phones and tablets: touch layout (see work.css) and a smaller stitch-image budget (memory).
 const PHONE = matchMedia('(max-width: 900px), (pointer: coarse)').matches;
+// The user counts the canvas as 10-point: its holes are every 2 stitches (the big holes between the double threads).
+// The grid lines and the rulers count these holes.
+const HOLE = 2;
 const PREFS_KEY = 'mandel-stitch-work-prefs';
 
 // ---------- Storage: the last chart and the progress of each chart live in IndexedDB (too big for localStorage) ----------
@@ -607,12 +610,14 @@ function afterDraw(ctx, v) {
   }
 }
 
-// Row and column numbers along the top and left edges, on the grid lines: the line after h holes runs along the thread
-// through the middle of stitch h (see PatternView.drawCanvasLines), labelled h. Every 5 / 10 / 50 / 100 holes.
+// Row and column numbers along the top and left edges, on the grid lines: the line after h (10-point) holes runs along
+// the thread through the middle of 10-point stitch h (see PatternView.drawCanvasLines), labelled h. Every 5 / 10 / 50 /
+// 100 holes.
 function drawRulers(ctx, v) {
   const { ox, oy, z, i0, j0, i1, j1, W, H } = v;
-  const step = [5, 10, 50, 100].find(s => z * s >= 26);
+  const step = [5, 10, 50, 100].find(s => z * HOLE * s >= 26);
   if (!step) return;
+  const at = h => HOLE * h - HOLE / 2; // stitch coordinate of the line after h holes
   const cw = view.cssW, ch = view.cssH;
   ctx.save();
   ctx.fillStyle = 'rgba(20, 18, 14, 0.72)';
@@ -622,23 +627,24 @@ function drawRulers(ctx, v) {
   ctx.fillStyle = '#f3efe6';
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
-  // Regular numbers make room for the pointer's (red) numbers.
-  const hx = hoverCell ? (hoverCell.i + 0.5 - ox) * z : -1e9, hy = hoverCell ? (hoverCell.j + 0.5 - oy) * z : -1e9;
-  for (let i = Math.ceil(Math.max(i0, 1) / step) * step; i <= Math.min(i1 + 1, W); i += step) {
-    const x = (i - 0.5 - ox) * z;
-    if (x > 34 && Math.abs(x - hx) > 22) ctx.fillText(String(i), x, 8);
+  // The pointer's 10-point column / row (red, at the middle of its 10-point stitch); regular numbers make room for it.
+  const hc = hoverCell ? Math.floor(hoverCell.i / HOLE) + 1 : 0, hr = hoverCell ? Math.floor(hoverCell.j / HOLE) + 1 : 0;
+  const hx = hoverCell ? (at(hc) - ox) * z : -1e9, hy = hoverCell ? (at(hr) - oy) * z : -1e9;
+  for (let h = Math.max(step, Math.ceil(i0 / HOLE / step) * step); at(h) <= Math.min(i1, W); h += step) {
+    const x = (at(h) - ox) * z;
+    if (x > 34 && Math.abs(x - hx) > 22) ctx.fillText(String(h), x, 8);
   }
   ctx.textAlign = 'right';
-  for (let j = Math.ceil(Math.max(j0, 1) / step) * step; j <= Math.min(j1 + 1, H); j += step) {
-    const y = (j - 0.5 - oy) * z;
-    if (y > 22 && Math.abs(y - hy) > 11) ctx.fillText(String(j), 27, y);
+  for (let h = Math.max(step, Math.ceil(j0 / HOLE / step) * step); at(h) <= Math.min(j1, H); h += step) {
+    const y = (at(h) - oy) * z;
+    if (y > 22 && Math.abs(y - hy) > 11) ctx.fillText(String(h), 27, y);
   }
-  if (hoverCell) { // the pointer's column and row numbers, highlighted on the rulers
+  if (hoverCell) {
     ctx.fillStyle = '#ff3b6b';
     ctx.textAlign = 'center';
-    ctx.fillText(String(hoverCell.i + 1), (hoverCell.i + 0.5 - ox) * z, 8);
+    ctx.fillText(String(hc), hx, 8);
     ctx.textAlign = 'right';
-    ctx.fillText(String(hoverCell.j + 1), 27, (hoverCell.j + 0.5 - oy) * z);
+    ctx.fillText(String(hr), 27, hy);
   }
   ctx.restore();
 }
@@ -660,7 +666,7 @@ const view = new PatternView($('stitches'), {
     view.requestDraw();
   },
   budget: PHONE ? 6e6 : undefined,
-  canvasGrid: true, // grid lines along the canvas threads, as the user drew them (every 5 / 10 holes)
+  canvasGrid: HOLE, // grid lines along the canvas threads, as the user drew them (every 5 / 10 holes of the 10-point canvas)
   miniSize: PHONE ? 96 : undefined,
   onZoom(z) {
     $('zoomInfo').textContent = z >= 1 ? `${z.toFixed(1)} px/stitch` : `1 px = ${(1 / z).toFixed(1)} stitches`;
@@ -687,7 +693,8 @@ function describeCell(i, j) {
   }
   const vis = VISUALS[prefs.visual];
   const extra = vis?.describe ? ` · ${vis.describe(k)}` : '';
-  return `Row ${j + 1}, column ${i + 1} · ${th.symbol} ${th.code} ${th.name} · ${kind}${extra}${done[k] ? ' · ✔ done' : ''}`;
+  const pos10 = `10-pt row ${Math.floor(j / HOLE) + 1}, column ${Math.floor(i / HOLE) + 1}`;
+  return `${pos10} (row ${j + 1}, column ${i + 1}) · ${th.symbol} ${th.code} ${th.name} · ${kind}${extra}${done[k] ? ' · ✔ done' : ''}`;
 }
 
 // ---------- Thread list ----------
