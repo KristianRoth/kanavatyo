@@ -505,7 +505,48 @@ function renderBandChips(plan) {
     b.addEventListener('click', () => openBandPicker(pickerBand === k ? -1 : k));
     box.appendChild(b);
   });
+  // Yarns of the set that no band uses (with only a few yarns, the automatic plan can leave some out).
+  const unused = bandYarns(plan).filter(t => !plan.segs.some(sg => sg.thread === t) && t !== plan.insideThread);
+  $('bandUnused').textContent = unused.length
+    ? `${plan.segs.length} bands · not used yet: ${unused.map(t => `${THREADS[t].code} ${THREADS[t].name}`).join(', ')} — open a band and use ＋ Split band to add one`
+    : '';
   if (pickerBand >= 0) renderBandPicker(plan);
+}
+
+// Yarns a band may use: the yarn set, minus the inside thread when the crisp edge protects it.
+function bandYarns(plan) {
+  const { crispEdge } = mapper();
+  return yarnOf(state.yarn).ids.filter(t => !(crispEdge && t === plan.insideThread));
+}
+const lutLab = (plan, i) => rgbToLab(plan.lut[i * 3], plan.lut[i * 3 + 1], plan.lut[i * 3 + 2]);
+
+// Split band k in half. The new (second) half gets the nearest yarn that no band uses yet, if any — usually the
+// reason for splitting — else the nearest yarn; then it's selected, ready for choosing its exact yarn.
+function splitBand(k) {
+  const plan = threadPlan();
+  const sg = plan.segs[k];
+  if (!sg || sg.end - sg.start < 2) return;
+  editThreads(segs => {
+    const mid = (sg.start + sg.end) >> 1, sample = (mid + sg.end) >> 1;
+    const unused = bandYarns(plan).filter(t => !segs.some(s => s.thread === t) && t !== plan.insideThread);
+    const lab = lutLab(plan, sample);
+    const thread = unused.length ? unused.reduce((a, b) => (labDist2(lab, THREAD_LAB[b]) < labDist2(lab, THREAD_LAB[a]) ? b : a)) : plan.dmcOf(sample);
+    const first = { ...sg, end: mid, sample: Math.min(mid - 1, sg.sample) };
+    segs.splice(k, 1, first, { start: mid, end: sg.end, sample, thread, pick: unused.length > 0 });
+  }, true);
+  openBandPicker(k + 1);
+}
+
+// Remove band k: its range joins the previous band (or the next one, for the first band).
+function removeBand(k) {
+  const plan = threadPlan();
+  if (plan.segs.length < 2) return;
+  editThreads(segs => {
+    if (k > 0) segs[k - 1].end = segs[k].end;
+    else segs[1].start = segs[0].start;
+    segs.splice(k, 1);
+  }, true);
+  openBandPicker(-1);
 }
 
 function openBandPicker(k) {
@@ -522,12 +563,15 @@ function renderBandPicker(plan = threadPlan()) {
   const { lut, size } = plan;
   const i = sg.sample, lab = rgbToLab(lut[i * 3], lut[i * 3 + 1], lut[i * 3 + 2]);
   const nearest = plan.dmcOf(i);
-  const { crispEdge } = mapper();
   const q = $('bandSearch').value.trim().toLowerCase();
   const cur = THREADS[sg.thread];
+  $('bandSplit').disabled = sg.end - sg.start < 2;
+  $('bandRemove').disabled = plan.segs.length < 2;
+  // Which bands use each yarn (other than this one).
+  const usedBy = new Map();
+  plan.segs.forEach((s, n) => { if (n !== pickerBand) usedBy.set(s.thread, [...(usedBy.get(s.thread) || []), n + 1]); });
   $('bandPickerTitle').innerHTML = `Band ${pickerBand + 1} · sampled at ${((i / size) * 100).toFixed(0)}% <i class="swatch" style="background:rgb(${lut[i * 3]},${lut[i * 3 + 1]},${lut[i * 3 + 2]})"></i> · now <b>${cur.code} ${cur.name}</b>`;
-  const rows = yarnOf(state.yarn).ids
-    .filter(t => !(crispEdge && t === plan.insideThread)) // crisp edge: the inside thread stays the inside's own
+  const rows = bandYarns(plan) // crisp edge: the inside thread stays the inside's own
     .filter(t => !q || `${THREADS[t].code} ${THREADS[t].name}`.toLowerCase().includes(q))
     .map(t => [t, Math.sqrt(labDist2(lab, THREAD_LAB[t]))])
     .sort((a, b) => a[1] - b[1]);
@@ -538,7 +582,11 @@ function renderBandPicker(plan = threadPlan()) {
     b.type = 'button';
     if (t === sg.thread) b.className = 'on';
     b.title = `${d.code} ${d.name} · ΔE ${dE.toFixed(1)} from the gradient color here${t === nearest ? ' (the automatic choice)' : ''}`;
-    b.innerHTML = `<i style="background:${rgbCss(d.rgb)}"></i><span><b>${d.code}</b> ${d.name}</span><em>${t === nearest ? 'auto' : dE.toFixed(0)}</em>`;
+    const bands = usedBy.get(t);
+    const tag = t === sg.thread ? 'this band' : bands ? `band ${bands.join(', ')}` : t === plan.insideThread ? 'inside' : 'unused';
+    b.title += ` · ${tag === 'unused' ? 'not used by any band yet' : `used in ${tag}`}`;
+    b.innerHTML = `<i style="background:${rgbCss(d.rgb)}"></i><span><b>${d.code}</b> ${d.name}</span>` +
+      `<em${tag === 'unused' ? ' class="unused"' : ''}>${tag === 'unused' ? 'unused' : t === nearest ? 'auto' : dE.toFixed(0)}</em>`;
     b.addEventListener('click', () => {
       const k = pickerBand;
       editThreads(segs => { segs[k].thread = t; segs[k].pick = true; }, true);
@@ -1233,6 +1281,8 @@ function initControls() {
   $('threadsAuto').addEventListener('click', resetThreads);
   $('bandSearch').addEventListener('input', () => renderBandPicker());
   $('bandPickerClose').addEventListener('click', () => openBandPicker(-1));
+  $('bandSplit').addEventListener('click', () => splitBand(pickerBand));
+  $('bandRemove').addEventListener('click', () => removeBand(pickerBand));
   $('bandSearch').addEventListener('keydown', e => { if (e.key === 'Escape') openBandPicker(-1); });
   initLabel();
   $('yarn').value = yarnKey();

@@ -100,6 +100,11 @@ threads of the 3.9/cm Penelope canvas; earlier plans used 3.9/cm = 468 × 351).
     - **The list:** the whole yarn set, nearest first (ΔE) to the gradient color at the band's sample, with search.
       The automatic choice is labeled "auto", and the crisp-edge inside thread is excluded.
     - **Choosing** sets `segs[k].thread` and `pick: true`, stored in `threadEdit` and save files. The chip shows ✎.
+    - **＋ Split band** (`splitBand`) halves a band, and the new half gets the nearest yarn **no band uses yet**.
+      **− Remove band** (`removeBand`) merges a band into its neighbour.
+    - **Why split exists:** with small yarn sets the automatic plan can leave a yarn out, because it's never the
+      nearest along the gradient (e.g. Final: F10 Laivasto is next to the protected black). The note under the chips
+      (`#bandUnused`) names unused yarns, and the list tags each yarn "band n", "unused" or "auto".
       Moving that band's sample point clears the pick (back to the nearest yarn).
   - **"Auto threads"** discards the edits.
 - **Depth mapping:** Cyclic, Linear, Logarithmic, Balanced, **"Balanced to max depth · crisp edge"** (`edge`), and

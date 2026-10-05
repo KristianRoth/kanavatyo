@@ -151,6 +151,11 @@ button:hover { border-color: var(--accent); }
 .band-picker-head span { flex: 1; min-width: 0; }
 .band-picker-head input { width: 170px; flex: none; margin: 0; padding: 4px 6px; }
 .band-picker-head button { padding: 3px 8px; }
+.band-picker-tools { gap: 6px; margin-bottom: 6px; }
+.band-picker-tools button { padding: 3px 8px; font-size: 12px; }
+.band-unused { margin: 4px 0 0; }
+.band-unused:empty { display: none; }
+.band-picker-list button em.unused { color: var(--accent); font-weight: 600; }
 .band-picker-list { max-height: 220px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 3px; }
 .band-picker-list button {
   display: flex; align-items: center; gap: 6px; padding: 3px 5px; text-align: left; font-size: 11px; line-height: 1.2;

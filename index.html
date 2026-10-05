@@ -309,11 +309,16 @@
         </div>
         <!-- One chip per band (thread segment): click to choose its exact yarn from the yarn set. -->
         <div id="bandChips" class="band-chips"></div>
+        <div id="bandUnused" class="muted small band-unused"></div>
         <div id="bandPicker" class="band-picker" hidden>
           <div class="row band-picker-head">
             <span id="bandPickerTitle" class="small"></span>
             <input id="bandSearch" type="search" placeholder="Search code or name" autocomplete="off">
             <button id="bandPickerClose" type="button" title="Close">✕</button>
+          </div>
+          <div class="row band-picker-tools">
+            <button id="bandSplit" type="button" title="Split this band in two; the new half gets a yarn no band uses yet">＋ Split band</button>
+            <button id="bandRemove" type="button" title="Remove this band: its part of the gradient goes to the neighbouring band">− Remove band</button>
           </div>
           <div id="bandPickerList" class="band-picker-list"></div>
         </div>
