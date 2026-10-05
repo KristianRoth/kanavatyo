@@ -3,7 +3,6 @@
 // corrects both white balance and exposure; the color is the mean of the 50th–90th lightness percentile of a yarn patch
 // clear of the label (the lit strands, without highlights). The names are invented on purpose (the user asked not to
 // match them to any brand's names). F10 Laivasto is Novita 7 Veljestä 170 from the yarn card (js/novita.js).
-// F09 First Snow is set to white by hand (the user's call: the photo measured a shaded gray, 186 176 171).
 // Aran weight, 100 g ≈ 200 m. code | name | R | G | B.
 export const FINAL_RAW = `
 F01|Raven|19|18|19
@@ -14,6 +13,6 @@ F05|Honeycomb|212|150|64
 F06|Buttermilk|224|197|139
 F07|Kingfisher|27|55|126
 F08|Frost|115|129|147
-F09|First Snow|242|240|235
+F09|First Snow|186|176|171
 F10|Laivasto|21|27|44
 `;
